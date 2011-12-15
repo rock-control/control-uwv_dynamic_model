@@ -1,0 +1,14 @@
+<package>
+  <description brief="Dynamic model for a slow(2 m/s) moving underwater vehicle.">
+  
+  </description>
+  <author>Sankaranarayanan Natarajan/sankar.natarajan@dfki.de</author>
+  <license></license>
+  <url>http://</url>
+  <logo>http://</logo>
+  <depend package="base/types"/> 
+  <versioncontrol type="git" url="" />
+  <export>
+    <cpp cflags="" lflags="" />
+  </export>
+</package>

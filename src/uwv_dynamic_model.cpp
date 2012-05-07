@@ -361,7 +361,8 @@ namespace underwaterVehicle
 	void DynamicModel::pwm_to_dc(const std::vector<double> & pwm_value, std::vector<double> & dc_volt)
 	{	
 		for(int i = 0; i < number_of_thrusters; i++)
-			dc_volt.at(i) = (pwm_value.at(i) / 255.0) * param.thrusterVoltage;		// param.thrusterVolatage in volts - Thruster Maximum voltage			
+			dc_volt.at(i) = (pwm_value.at(i))*param.thrusterVoltage; // / 255.0) * param.thrusterVoltage;		
+						// param.thrusterVolatage in volts - Thruster Maximum voltage			
 	}			
 	
 	//DERIV (current_time, plant_state, ctrl_input, f1);

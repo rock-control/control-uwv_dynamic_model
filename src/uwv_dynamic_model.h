@@ -25,6 +25,7 @@
 #include "uwv_dataTypes.h"
 
 #define sq(x) (x)*(x)
+	
 
 #define DEBUG
 
@@ -52,7 +53,8 @@ namespace underwaterVehicle
 			Eigen::Quaterniond getOrientation_in_Quat();
 			Eigen::Vector3d getOrientation_in_Euler();
 			double Simulationtime();		
-			// calculating the model parameters 			
+			// calculating the model parameters 	
+			void inertia_matrix(const Eigen::Matrix<double,6,1> &velocity,Eigen::Matrix<double,6,6>& mass_matrix);
 			void gravity_buoyancy(const Eigen::Vector3d &eulerang, Eigen::Matrix<double,6,1>& gravitybuoyancy);
 			void gravity_buoyancy(const Eigen::Quaternion<double> q, Eigen::Matrix<double,6,1>& gravitybuoyancy);
 			void hydrodynamic_damping(const Eigen::Matrix<double,6,1> &velocity,Eigen::Matrix<double,6,6>& damping_matrix);
@@ -61,35 +63,37 @@ namespace underwaterVehicle
 			void setPWMLevels(ThrusterMapping thrusters);
 			void setRPMLevels(ThrusterMapping thrusters);
 			void setThrust(std::vector<double> inputthrust);
-			void pwm_to_dc(const std::vector<double> & pwm_value, std::vector<double> & dc_volt);
+			void pwm_to_dc(const ThrusterMapping thrusters, std::vector<double> & dc_volt);
 			// simulating the model
 			void DERIV(const double t, const double *x, const double *u, double *xdot);
 		    	// mathematical functions		    	
 			Eigen::Quaternion<double> Euler_to_Quaternion(const Eigen::Vector3d &euler_angles);
 			Eigen::Vector3d Quaternion_to_Euler(Eigen::Quaternion<double> quaterion_angles);
 		private:
-			// variables used for simulation
-			Eigen::MatrixXd input_thrust;					// input thrust 
-			Eigen::MatrixXd thrust;						// force and torque w.r.t body-fixed frame			
-			Eigen::Matrix<double,6,1> velocity;  				// This Vector velocity represent the linear and angular velocity of the body-fixed frame
-											// velocity(0)=u; velocity(1)=v; velocity(2)=w; velocity(3)=p; velocity(4)=q; velocity(5)=r 
-			Eigen::Matrix<double,6,1> acceleration;				// this vector acceleration represent the linear and angular acceleration of the body-fixed frame
-			Eigen::Vector3d position;					// vehicle position
-			Eigen::Vector3d orientation_euler;				// vehicle orienation in eulers angles
-			Eigen::Quaterniond orientation_quaternion;			// vehicle orienation in quaternion angles		
-			underwaterVehicle::Parameters param;				// parameter object						
-			std::vector<double> dc_volt;		    			// direct current values used for modeling the thrusters which doesnt have speed values
-			int number_of_thrusters;					// number of thrusters
+			// variables used for simulation			
+			Eigen::MatrixXd input_thrust;				// input thrust 
+			Eigen::MatrixXd thrust;					// force and torque w.r.t body-fixed frame			
+			Eigen::Matrix<double,DOF,1> velocity;  			// This Vector velocity represent the linear and angular velocity of the body-fixed frame
+										// velocity(0)=u; velocity(1)=v; velocity(2)=w; velocity(3)=p; velocity(4)=q; velocity(5)=r 
+			Eigen::Matrix<double,DOF,1> acceleration;		// this vector acceleration represent the linear and angular acceleration of the body-fixed frame
+			Eigen::Vector3d position;				// vehicle position
+			Eigen::Vector3d orientation_euler;			// vehicle orienation in eulers angles
+			Eigen::Quaterniond orientation_quaternion;		// vehicle orienation in quaternion angles		
+			underwaterVehicle::Parameters param;			// parameter object						
+			std::vector<double> dc_volt;		    		// direct current values used for modeling the thrusters which doesnt have speed values
+			int number_of_thrusters;				// number of thrusters
+			double negative_constant;
 
-			/************** UWV variables ***************************/		    	
-			Eigen::Matrix<double,6,6> mass_matrix;				// mass Matrix  w.r.t body-fixed frame
-			Eigen::Matrix<double,6,6> Inv_massMatrix;			// inverse of mass Matrix  needed in simulation 
-			Eigen::Matrix<double,6,6> damping_matrix;			// damping Effect Matrix w.r.t body-fixed frame		    					    	
-			Eigen::MatrixXd thruster_control_matrix;			// thruster Control Matrix(TCM)		
-			Eigen::Matrix<double,6,1> gravitybuoyancy;			// gravity and buoyancy Matrix w.r.t body-fixed frame
+			/************** UWV variables ***************************/			
+			Eigen::Matrix<double,DOF,DOF> mass_matrix;		// mass Matrix  w.r.t body-fixed frame
+			Eigen::Matrix<double,DOF,DOF> Inv_massMatrix;		// inverse of mass Matrix  needed in simulation 
+			Eigen::Matrix<double,DOF,DOF> damping_matrix;		// damping Effect Matrix w.r.t body-fixed frame		    					    	
+			Eigen::MatrixXd thruster_control_matrix;		// thruster Control Matrix(TCM)		
+			Eigen::Matrix<double,DOF,1> gravitybuoyancy;		// gravity and buoyancy Matrix w.r.t body-fixed frame
 			/************** UWV physical parameters *****************/			
-			double uwv_weight;   						// total gravity force magnitude
-			double uwv_buoyancy;	   					// total buoyancy force magnitude				
+			double uwv_weight;   					// total gravity force magnitude
+			double uwv_buoyancy;	   				// total buoyancy force magnitude	
+				
 			
 	};
 };

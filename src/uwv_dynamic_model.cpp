@@ -271,6 +271,12 @@ namespace underwaterVehicle
 			ctrl_input[j] = 0.0;
 
 		pwm_to_dc(thrusters, dc_volt);
+
+		for(int i = 0; i < 5; i++)
+		{
+			std::cout<< "Dc volt"<<dc_volt.at(i)<<std::endl;
+			std::cout<<"thruster"<<thrusters.thruster_value.at(i)<<std::endl;
+		}
 	
 		for ( int i = 0; i < number_of_thrusters; i ++)
 		{
@@ -401,47 +407,62 @@ namespace underwaterVehicle
 			switch (thrusters.thruster_mapped_names.at(i))
 			{
 				case underwaterVehicle::SURGE:
-					if ( thrusters.thruster_value.at(i) < negative_constant)
+					if (thrusters.thruster_value.at(i) == 0)
+						dc_volt.at(i) = 0.0;
+					else if ( thrusters.thruster_value.at(i) < negative_constant)
 						dc_volt.at(i) = ((((param.maxSurgePWM - param.minSurgePWM) * thrusters.thruster_value.at(i)) - param.minSurgePWM) / 255.0) * param.thrusterVoltage;						
-					else
+					else if( thrusters.thruster_value.at(i) > negative_constant) 
 						dc_volt.at(i) = ((((param.maxSurgePWM - param.minSurgePWM) * thrusters.thruster_value.at(i)) + param.minSurgePWM) / 255.0) * param.thrusterVoltage;
-						
+				
 					break;				
 
 				case underwaterVehicle::SWAY:
-
-					if ( thrusters.thruster_value.at(i) < negative_constant)		
+					if (thrusters.thruster_value.at(i) == 0)
+						dc_volt.at(i) = 0.0;
+            				else if ( thrusters.thruster_value.at(i) < negative_constant)		
 						dc_volt.at(i) = ((((param.maxSwayPWM - param.minSwayPWM) * thrusters.thruster_value.at(i)) - param.minSwayPWM) / 255.0) * param.thrusterVoltage;
-					else
+					else if ( thrusters.thruster_value.at(i) > negative_constant)  
 						dc_volt.at(i) = ((((param.maxSwayPWM - param.minSwayPWM) * thrusters.thruster_value.at(i)) + param.minSwayPWM) / 255.0) * param.thrusterVoltage;
 					break;				
 
 				case underwaterVehicle::HEAVE:
-					if ( thrusters.thruster_value.at(i) < negative_constant)		
+					if (thrusters.thruster_value.at(i) == 0)			
+						dc_volt.at(i) = 0.0;
+					else if ( thrusters.thruster_value.at(i) < negative_constant)		
 						dc_volt.at(i) = ((((param.maxHeavePWM - param.minHeavePWM) * thrusters.thruster_value.at(i)) - param.minHeavePWM) / 255.0) * param.thrusterVoltage;
-					else
+					else if ( thrusters.thruster_value.at(i) > negative_constant)
 						dc_volt.at(i) = ((((param.maxHeavePWM - param.minHeavePWM) * thrusters.thruster_value.at(i)) + param.minHeavePWM) / 255.0) * param.thrusterVoltage;
+					
 					break;	
 
 				case underwaterVehicle::ROLL:
-					if ( thrusters.thruster_value.at(i) < negative_constant)		
+					if (thrusters.thruster_value.at(i) == 0)
+						dc_volt.at(i) = 0.0;
+					else if ( thrusters.thruster_value.at(i) < negative_constant)		
 						dc_volt.at(i) = ((((param.maxRollPWM - param.minRollPWM) * thrusters.thruster_value.at(i)) - param.minRollPWM) / 255.0) * param.thrusterVoltage;
-					else
+					else if ( thrusters.thruster_value.at(i) > negative_constant)
 						dc_volt.at(i) = ((((param.maxRollPWM - param.minRollPWM) * thrusters.thruster_value.at(i)) + param.minRollPWM) / 255.0) * param.thrusterVoltage;
+					
 					break;	
 
 				case underwaterVehicle::PITCH:
-					if ( thrusters.thruster_value.at(i) < negative_constant)		
+
+					if (thrusters.thruster_value.at(i) == 0)
+						dc_volt.at(i) = 0.0;
+					else if ( thrusters.thruster_value.at(i) < negative_constant)		
 						dc_volt.at(i) = ((((param.maxPitchPWM - param.minPitchPWM) * thrusters.thruster_value.at(i)) - param.minPitchPWM) / 255.0) * param.thrusterVoltage;
-					else
+					else if ( thrusters.thruster_value.at(i) > negative_constant)
 						dc_volt.at(i) = ((((param.maxPitchPWM - param.minPitchPWM) * thrusters.thruster_value.at(i)) + param.minPitchPWM) / 255.0) * param.thrusterVoltage;
 					break;	
 
 				case underwaterVehicle::YAW:
-					if ( thrusters.thruster_value.at(i) < negative_constant)		
+					if (thrusters.thruster_value.at(i) == 0)
+						dc_volt.at(i) = 0.0;
+					else if ( thrusters.thruster_value.at(i) < negative_constant)		
 						dc_volt.at(i) = ((((param.maxYawPWM - param.minYawPWM) * thrusters.thruster_value.at(i)) - param.minYawPWM) / 255.0) * param.thrusterVoltage;
-					else
+					else if ( thrusters.thruster_value.at(i) > negative_constant)
 						dc_volt.at(i) = ((((param.maxYawPWM - param.minYawPWM) * thrusters.thruster_value.at(i)) + param.minYawPWM) / 255.0) * param.thrusterVoltage;
+
 					break;	
 
 			}
@@ -481,7 +502,7 @@ namespace underwaterVehicle
 		Inv_massMatrix = mass_matrix.inverse();
 		
 		// simplified equation of motion for an underwater vehicle
-		acceleration  = Inv_massMatrix * ( thrust - (damping_matrix * velocity) );
+		acceleration  = Inv_massMatrix * ( thrust - (damping_matrix * velocity)-gravitybuoyancy );
 
 		for(int i=0;i<6;i++)
 		{

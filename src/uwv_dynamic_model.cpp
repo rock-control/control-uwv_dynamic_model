@@ -211,7 +211,7 @@ namespace underwaterVehicle
 
 		for (int i = 0; i < DOF; i++)
 		{
-			if (velocity(i) > negative_constant)
+			if (velocity(i) > -0.001)
 				damping_matrix(i,i) =  param.linDampCoeff[i].positive + ( param.quadDampCoeff[i].positive * fabs(velocity(i)) );
 			else
 				damping_matrix(i,i) =  param.linDampCoeff[i].negative + ( param.quadDampCoeff[i].negative * fabs(velocity(i)) );
@@ -288,6 +288,20 @@ namespace underwaterVehicle
 		rot_BI(2,2)  = ( cos(eulerang(0)) * cos(eulerang(1)) );
 	}
 
+	void DynamicModel::rot_IB_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& rot_IB)
+	{
+
+		rot_IB(0,0)  = ( cos(eulerang(2)) * cos(eulerang(1)) );
+		rot_IB(0,1)  = ( (-sin(eulerang(2)) * cos(eulerang(0)) ) + ( cos(eulerang(2)) * sin(eulerang(1)) * sin(eulerang(0)) ));
+		rot_IB(0,2)  = ( ( sin(eulerang(2)) * sin(eulerang(0)) ) + ( cos(eulerang(2)) * sin(eulerang(1)) * cos(eulerang(0)) ));
+		rot_IB(1,0)  = ( sin(eulerang(2)) * cos(eulerang(1)) ); 
+		rot_IB(1,1)  = ( ( cos(eulerang(2)) * cos(eulerang(0)) ) + ( sin(eulerang(2)) * sin(eulerang(1)) * sin(eulerang(0)) ));
+		rot_IB(1,2)  = ( -sin(eulerang(1)) );
+		rot_IB(2,0)  = ( sin(eulerang(0)) * cos(eulerang(1)) );
+		rot_IB(2,1)  = ( cos(eulerang(1)) * sin(eulerang(0)) );
+		rot_IB(2,2)  = ( cos(eulerang(0)) * cos(eulerang(1)) );
+	}
+
 	void DynamicModel::rot_IB_euler(const Eigen::Matrix3d &rot_BI, Eigen::Matrix3d &rot_IB)
 	{
 		rot_IB = rot_BI.inverse();
@@ -347,6 +361,7 @@ namespace underwaterVehicle
 
 		pwm_to_dc(thrusters, dc_volt);
 
+		float factor = 0.01;
 		
 		for ( int i = 0; i < number_of_thrusters; i ++)
 		{
@@ -354,18 +369,18 @@ namespace underwaterVehicle
 			switch (thrusters.thruster_mapped_names.at(i))
 			{
 				case underwaterVehicle::SURGE:
-					if ( dc_volt.at(i) == 0.0 )
+					if (( dc_volt.at(i) <= factor ) && (dc_volt.at(i) >=-factor))
 						ctrl_input[i] = 0.0;
-					else if ( dc_volt.at(i) < -0.0 )
+					else if ( dc_volt.at(i) < -factor )
 						ctrl_input[i] = (param.thruster_coefficient_pwm.surge.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.surge.negative.coefficient_b *dc_volt.at(i) ) ;						
 					else
 						ctrl_input[i] = (param.thruster_coefficient_pwm.surge.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.surge.positive.coefficient_b * dc_volt.at(i) );
 					break;				
 
 				case underwaterVehicle::SWAY:
-					if ( dc_volt.at(i) == 0.0 )
+					if (( dc_volt.at(i) <= factor ) && (dc_volt.at(i) >=-factor))					
 						ctrl_input[i] = 0.0;
-					else if ( dc_volt.at(i) < -0.0 )
+					else if ( dc_volt.at(i) < -factor )
 						ctrl_input[i] = (param.thruster_coefficient_pwm.sway.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.sway.negative.coefficient_b * dc_volt.at(i) );
 					else
 						ctrl_input[i] = (param.thruster_coefficient_pwm.sway.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.sway.positive.coefficient_b * dc_volt.at(i) );					
@@ -401,9 +416,9 @@ namespace underwaterVehicle
 					break;
 
 				case underwaterVehicle::YAW:
-					if ( dc_volt.at(i) == 0.0 )
+					if (( dc_volt.at(i) <= factor ) && (dc_volt.at(i) >=-factor))
 						ctrl_input[i] = 0.0;
-					else if ( dc_volt.at(i) < -0.0 )
+					else if ( dc_volt.at(i) < -factor )
 						ctrl_input[i] = (param.thruster_coefficient_pwm.yaw.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.yaw.negative.coefficient_b * dc_volt.at(i) );
 					else
 						ctrl_input[i] = (param.thruster_coefficient_pwm.yaw.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.yaw.positive.coefficient_b * dc_volt.at(i) );					
@@ -412,6 +427,8 @@ namespace underwaterVehicle
 			}
 		}	
 		
+
+
 		// # of simulation steps to be performed by the RK4 algorith in one sampling interval
 		for (int ii=0; ii < param.sim_per_cycle ; ii++)		
 		    solve();
@@ -483,36 +500,44 @@ namespace underwaterVehicle
 	void DynamicModel::pwm_to_dc(const ThrusterMapping thrusters, std::vector<double> & dc_volt)
 	{	
 
+		std::cout<<"input = ";
+		for(int i = 0; i< thrusters.thruster_value.size(); i++)
+			std::cout<<thrusters.thruster_value.at(i)<<" ";
+		std::cout<<std::endl;
+	
+		float factor = 0.01;	//for debugginh - need to be removed later
+
+
 		// param.thrusterVolatage in volts - Thruster Maximum voltage
 		for ( int i = 0; i < number_of_thrusters; i ++)
 		{
 			switch (thrusters.thruster_mapped_names.at(i))
 			{
 				case underwaterVehicle::SURGE:
-					if (thrusters.thruster_value.at(i) == 0)
+					if ((thrusters.thruster_value.at(i) <= factor) && (thrusters.thruster_value.at(i) >=-factor)) 
 						dc_volt.at(i) = 0.0;
-					else if ( thrusters.thruster_value.at(i) < negative_constant)
+					else if ( thrusters.thruster_value.at(i) < -factor)
 						dc_volt.at(i) = ((((param.maxSurgePWM - param.minSurgePWM) * thrusters.thruster_value.at(i)) - param.minSurgePWM) / 255.0) * param.thrusterVoltage;						
-					else if( thrusters.thruster_value.at(i) > negative_constant) 
+					else if( thrusters.thruster_value.at(i) > factor) 
 						dc_volt.at(i) = ((((param.maxSurgePWM - param.minSurgePWM) * thrusters.thruster_value.at(i)) + param.minSurgePWM) / 255.0) * param.thrusterVoltage;
 				
 					break;				
 
 				case underwaterVehicle::SWAY:
-					if (thrusters.thruster_value.at(i) == 0)
+					if ((thrusters.thruster_value.at(i) <= factor) && (thrusters.thruster_value.at(i) >=-factor)) 
 						dc_volt.at(i) = 0.0;
-            				else if ( thrusters.thruster_value.at(i) < negative_constant)		
+            				else if ( thrusters.thruster_value.at(i) < -factor)		
 						dc_volt.at(i) = ((((param.maxSwayPWM - param.minSwayPWM) * thrusters.thruster_value.at(i)) - param.minSwayPWM) / 255.0) * param.thrusterVoltage;
-					else if ( thrusters.thruster_value.at(i) > negative_constant)  
+					else if ( thrusters.thruster_value.at(i) > factor)  
 						dc_volt.at(i) = ((((param.maxSwayPWM - param.minSwayPWM) * thrusters.thruster_value.at(i)) + param.minSwayPWM) / 255.0) * param.thrusterVoltage;
 					break;				
 
 				case underwaterVehicle::HEAVE:
-					if (thrusters.thruster_value.at(i) == 0)			
-						dc_volt.at(i) = 0.0;
-					else if ( thrusters.thruster_value.at(i) < negative_constant)		
+					if ((thrusters.thruster_value.at(i) <= 0.0001) && (thrusters.thruster_value.at(i) >=-0.0001))
+							dc_volt.at(i) = 0.0;		
+					else if ( thrusters.thruster_value.at(i) < -0.001)		
 						dc_volt.at(i) = ((((param.maxHeavePWM - param.minHeavePWM) * thrusters.thruster_value.at(i)) - param.minHeavePWM) / 255.0) * param.thrusterVoltage;
-					else if ( thrusters.thruster_value.at(i) > negative_constant)
+					else if ( thrusters.thruster_value.at(i) > 0.001)
 						dc_volt.at(i) = ((((param.maxHeavePWM - param.minHeavePWM) * thrusters.thruster_value.at(i)) + param.minHeavePWM) / 255.0) * param.thrusterVoltage;
 					
 					break;	
@@ -520,15 +545,14 @@ namespace underwaterVehicle
 				case underwaterVehicle::ROLL:
 					if (thrusters.thruster_value.at(i) == 0)
 						dc_volt.at(i) = 0.0;
-					else if ( thrusters.thruster_value.at(i) < negative_constant)		
+					else if ( thrusters.thruster_value.at(i) < -0.001)		
 						dc_volt.at(i) = ((((param.maxRollPWM - param.minRollPWM) * thrusters.thruster_value.at(i)) - param.minRollPWM) / 255.0) * param.thrusterVoltage;
-					else if ( thrusters.thruster_value.at(i) > negative_constant)
+					else if ( thrusters.thruster_value.at(i) > 0.001)
 						dc_volt.at(i) = ((((param.maxRollPWM - param.minRollPWM) * thrusters.thruster_value.at(i)) + param.minRollPWM) / 255.0) * param.thrusterVoltage;
 					
 					break;	
 
 				case underwaterVehicle::PITCH:
-
 					if (thrusters.thruster_value.at(i) == 0)
 						dc_volt.at(i) = 0.0;
 					else if ( thrusters.thruster_value.at(i) < negative_constant)		
@@ -538,11 +562,11 @@ namespace underwaterVehicle
 					break;	
 
 				case underwaterVehicle::YAW:
-					if (thrusters.thruster_value.at(i) == 0)
+					if ((thrusters.thruster_value.at(i) <= factor) && (thrusters.thruster_value.at(i) >=-factor))
 						dc_volt.at(i) = 0.0;
-					else if ( thrusters.thruster_value.at(i) < negative_constant)		
+					else if ( thrusters.thruster_value.at(i) < -factor)		
 						dc_volt.at(i) = ((((param.maxYawPWM - param.minYawPWM) * thrusters.thruster_value.at(i)) - param.minYawPWM) / 255.0) * param.thrusterVoltage;
-					else if ( thrusters.thruster_value.at(i) > negative_constant)
+					else if ( thrusters.thruster_value.at(i) > factor)
 						dc_volt.at(i) = ((((param.maxYawPWM - param.minYawPWM) * thrusters.thruster_value.at(i)) + param.minYawPWM) / 255.0) * param.thrusterVoltage;
 
 					break;	
@@ -580,8 +604,10 @@ namespace underwaterVehicle
 		inertia_matrix(velocity, mass_matrix_bff);
 
 		// Now the vehicle dynamics is represented w.r.t Earth-fixed frame
-		rot_BI_euler (orientation_euler, rot_BI);					// Computing rotation matrix for body fixed frame w.r.t earth fixed frame
-		rot_IB_euler (rot_BI, rot_IB);							// Computing rotation matrix for earth fixed frame w.r.t body fixed frame
+		//rot_BI_euler (orientation_euler, rot_BI);					// Computing rotation matrix for body fixed frame w.r.t earth fixed frame
+		//rot_IB_euler (rot_BI, rot_IB);							// Computing rotation matrix for earth fixed frame w.r.t body fixed frame
+		rot_IB_euler (orientation_euler, rot_IB);					// Computing rotation matrix for body fixed frame w.r.t earth fixed frame
+
 		jacobianMatrix_euler(orientation_euler, jacob_kin_e);				// Computing Jacobian matrix
 		inverseJacobianMatrix_euler(orientation_euler, inv_jacob_kin_e);		// Computing Inverse of Jacobian matrix
 		compute_inv_jacob_e_RIB (rot_IB, inv_jacob_kin_e, inv_jacob_e_RIB);		// Computing Inverse of Jacobian matrix w.r.t. rot _IB
@@ -604,12 +630,19 @@ namespace underwaterVehicle
 		    xdot[i+6]= x[i];	    
 		}
 
+			
+		//std::cout<<u[0]<<" "<<u[1]<<" "<<u[2]<<" "<<u[3]<<" "<<u[4]<<" "<<u[5]<<std::endl;
+		//std::cout<<"-----------"<<std::endl;
+		std::cout<<"thrust_bff";
+		std::cout<<thrust_bff(0)<<" "<<thrust_bff(1)<<" "<<thrust_bff(2)<<" "<<thrust_bff(3)<<" "<<thrust_bff(4)<<" "<<thrust_bff(5)<<std::endl;
+
+
 		/*std::cout<<"tb= "<<thrust<<std::endl;		
 		std::cout<<"mass= "<< mass_matrix<<std::endl;		
 		std::cout<<"inv mass= "<<Inv_massMatrix<<std::endl;		
-		std::cout<<"Dp= "<<(damping_matrix)<<std::endl;		
-		std::cout<<"V "<<velocity<<std::endl;
-		std::cout<<"V_dot "<<acceleration<<std::endl;*/
+		std::cout<<"Dp= "<<(damping_matrix)<<std::endl;	*/
+		//std::cout<<"V "<<velocity<<std::endl;
+		//std::cout<<"V_dot "<<acceleration<<std::endl;
 		//std::cout<<"tb= "<<thrust(0)<<" "<<thrust(1)<<" "<<thrust(2)<<" "<<thrust(3)<<" "<<thrust(4)<<" "<<thrust(5)<<std::endl;
 		//std::cout<<"Dp= "<<(damping_matrix)<<std::endl;		
 		//std::cout<<"V "<<velocity(0)<<" "<<velocity(1)<<" "<<velocity(2)<<" "<<velocity(3)<<" "<<velocity(4)<<" "<<velocity(5)<<std::endl;

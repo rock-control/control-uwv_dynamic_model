@@ -71,6 +71,7 @@ namespace underwaterVehicle
 			Eigen::Vector3d Quaternion_to_Euler(Eigen::Quaternion<double> quaterion_angles);
 			void rot_BI_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& rot_BI);
 			void rot_IB_euler(const Eigen::Matrix3d &rot_BI, Eigen::Matrix3d &rot_IB);
+			void rot_IB_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& rot_IB);
 			void jacobianMatrix_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& jacob_kin_e);
 			void inverseJacobianMatrix_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& inv_jacob_kin_e);
 			void compute_inv_jacob_e_RIB(const Eigen::Matrix3d & rot_IB, const Eigen::Matrix3d & inv_jacob_kin_e, Eigen::Matrix<double , 6, 6 > & inv_jacob_e_RIB);

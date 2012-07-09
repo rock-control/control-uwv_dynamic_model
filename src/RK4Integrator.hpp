@@ -42,7 +42,9 @@ class RK4_SIM
 	// values x, the present control value u, and values of the derivatives 
 	// of the states xdot (calculated inside of the funtcion). 
 	// It is overloaded in the derived class!!!
-	virtual void DERIV(const double t, const double *x, 
+	//virtual void DERIV(const double t, const double *x, 
+	//	const double *u, double *xdot) {};
+	virtual void DERIV(const double t, double *x, 
 		const double *u, double *xdot) {};
 
     protected:

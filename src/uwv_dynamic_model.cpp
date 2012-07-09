@@ -576,7 +576,8 @@ namespace underwaterVehicle
 	}			
 	
 	//DERIV (current_time, plant_state, ctrl_input, f1);
-	void DynamicModel :: DERIV(const double t, const double *x, const double *u, double *xdot)
+	//void DynamicModel :: DERIV(const double t, const double *x, const double *u, double *xdot)
+	void DynamicModel :: DERIV(const double t, double *x, const double *u, double *xdot)
 	{
 		// underwater vehicle  - Dynamics
 		/*  V(0) = u    V_dot(0) = u_dot        X(0) = u    X_dot(0) = u_dot    X(6) = x       X_dot(6) = u
@@ -588,11 +589,26 @@ namespace underwaterVehicle
 
 		for(int i=0;i<6;i++)
 			velocity(i) = x[i]; 							// velocity
+	
 		for(int i=0;i<3;i++)
 		{
-			position(i)	= x[i+6];						// position
-			orientation_euler(i) 	= x[i+9]; 					// orientation			
+			position(i)	= x[i+6];						// position			
+			
+			if (x[i+9] > PI)
+			{
+				orientation_euler(i) 	= x[i+9] - 2*PI;			// orientation	
+				x[i+9]			= x[i+9] - 2*PI;
+			}			 
+			else if (x[i+9] < -PI)
+			{
+				orientation_euler(i) 	= x[i+9] + 2*PI;
+				x[i+9]		 	= x[i+9] + 2*PI;
+
+			}
+			else
+				orientation_euler(i) = x[i+9];  
 		}
+ 
 
 		for(int i=0;i<number_of_thrusters;i++)
 			input_thrust(i,0) = u[i]; 						// thrust as input 

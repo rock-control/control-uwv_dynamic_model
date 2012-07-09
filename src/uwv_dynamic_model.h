@@ -25,6 +25,7 @@
 #include "uwv_dataTypes.h"
 
 #define sq(x) (x)*(x)
+#define PI 3.141592653589793
 	
 
 #define DEBUG
@@ -65,7 +66,8 @@ namespace underwaterVehicle
 			void setThrust(std::vector<double> inputthrust);
 			void pwm_to_dc(const ThrusterMapping thrusters, std::vector<double> & dc_volt);
 			// simulating the model
-			void DERIV(const double t, const double *x, const double *u, double *xdot);
+			//void DERIV(const double t, const double *x, const double *u, double *xdot);
+			void DERIV(const double t, double *x, const double *u, double *xdot);
 		    	// mathematical functions		    	
 			Eigen::Quaternion<double> Euler_to_Quaternion(const Eigen::Vector3d &euler_angles);
 			Eigen::Vector3d Quaternion_to_Euler(Eigen::Quaternion<double> quaterion_angles);

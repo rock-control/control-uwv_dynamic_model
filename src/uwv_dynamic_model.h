@@ -53,6 +53,7 @@ namespace underwaterVehicle
 			Eigen::Vector3d getAcceleration();
 			Eigen::Quaterniond getOrientation_in_Quat();
 			Eigen::Vector3d getOrientation_in_Euler();
+			Eigen::Vector3d getAngularVelocity();
 			double Simulationtime();		
 			// calculating the model parameters 	
 			void inertia_matrix(const Eigen::Matrix<double,6,1> &velocity,Eigen::Matrix<double,6,6>& mass_matrix);
@@ -89,6 +90,7 @@ namespace underwaterVehicle
 			Eigen::Quaterniond orientation_quaternion;		// vehicle orienation in quaternion angles		
 			underwaterVehicle::Parameters param;			// parameter object						
 			std::vector<double> dc_volt;		    		// direct current values used for modeling the thrusters which doesnt have speed values
+			
 			int number_of_thrusters;				// number of thrusters
 			double negative_constant;
 			Eigen::Matrix3d rot_BI;
@@ -114,7 +116,9 @@ namespace underwaterVehicle
 			Eigen::MatrixXd thrust_eff;				// force and torque w.r.t earth-fixed frame
 			/************** UWV physical parameters *****************/			
 			double uwv_weight;   					// total gravity force magnitude
-			double uwv_buoyancy;	   				// total buoyancy force magnitude	
+			double uwv_buoyancy;	   				// total buoyancy force magnitude
+
+			Eigen::MatrixXd temp_thrust;	
 				
 			
 	};

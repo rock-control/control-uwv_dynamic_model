@@ -41,6 +41,10 @@ namespace underwaterVehicle
 		acceleration   		= Eigen::Matrix<double, DOF, 1>		::Zero();
 		orientation_euler	= Eigen::Vector3d			::Zero();
 		position		= Eigen::Vector3d			::Zero();
+		linear_velocity		= Eigen::Vector3d			::Zero();
+		angular_velocity	= Eigen::Vector3d			::Zero();
+		linear_acceleration	= Eigen::Vector3d			::Zero();
+		angular_acceleration	= Eigen::Vector3d			::Zero();
 		rot_BI			= Eigen::Matrix3d			::Zero();
 		rot_IB			= Eigen::Matrix3d			::Zero();
 		jacob_kin_e		= Eigen::Matrix3d			::Zero();
@@ -59,8 +63,7 @@ namespace underwaterVehicle
 		
 		// # assigning the damping parameter is done in a function
 		// # since its value depends on the vehicle direction
-		//param.linDampCoeff.resize(DOF, 0.0);
-		//param.quadDampCoeff.resize(DOF, 0.0);
+		
 		for( int i = 0; i < DOF; i++)
 		{
 			param.linDampCoeff[i].positive  = 0.0;
@@ -79,9 +82,7 @@ namespace underwaterVehicle
 		
 		input_thrust		= Eigen::MatrixXd::Zero(number_of_thrusters,1);
 		thrust_bff		= Eigen::MatrixXd::Zero(DOF,1);
-		thrust_eff		= Eigen::MatrixXd::Zero(DOF,1);
-		//thrust_bff		= Eigen::MatrixXd::Zero(number_of_thrusters,1);
-		//thrust_eff		= Eigen::MatrixXd::Zero(number_of_thrusters,1);
+		thrust_eff		= Eigen::MatrixXd::Zero(DOF,1);		
 		thruster_control_matrix = Eigen::MatrixXd::Zero(DOF, number_of_thrusters);
 
 		temp_thrust		= Eigen::MatrixXd::Zero(DOF,0.0);
@@ -121,13 +122,16 @@ namespace underwaterVehicle
 
 	Eigen::Vector3d DynamicModel::getAcceleration()
 	{
-		Eigen ::Vector3d _acceleration(0.0, 0.0, 0.0);
+		//Eigen ::Vector3d _acceleration(0.0, 0.0, 0.0);
 
-		_acceleration(0) = acceleration(0);
-		_acceleration(1) = acceleration(1);
-		_acceleration(2) = acceleration(2);
+		//_acceleration(0) = acceleration(0);
+		//_acceleration(1) = acceleration(1);
+		//_acceleration(2) = acceleration(2);
 		
-		return _acceleration;		
+		//return _acceleration;	
+		
+		// can alos use acceleration.head(3) - efficiency ??
+		return linear_acceleration;
 	}
 
 	Eigen::Vector3d DynamicModel::getPosition()
@@ -150,13 +154,15 @@ namespace underwaterVehicle
 
 	Eigen::Vector3d DynamicModel::getAngularVelocity()
 	{
-		Eigen ::Vector3d _angularvelocity(0.0, 0.0, 0.0);
+		//Eigen ::Vector3d _angularvelocity(0.0, 0.0, 0.0);
 
-		_angularvelocity(0) = plant_state[3];
-		_angularvelocity(1) = plant_state[4];
-		_angularvelocity(2) = plant_state[5];
+		//_angularvelocity(0) = plant_state[3];
+		//_angularvelocity(1) = plant_state[4];
+		//_angularvelocity(2) = plant_state[5];
 		
-		return _angularvelocity;
+		//return _angularvelocity;
+		
+		return angular_velocity;
 	}
 
 	double DynamicModel::Simulationtime()
@@ -166,13 +172,15 @@ namespace underwaterVehicle
 
 	Eigen::Vector3d DynamicModel::getVelocity()
 	{
-		Eigen ::Vector3d _velocity(0.0, 0.0, 0.0);
+		//Eigen ::Vector3d _velocity(0.0, 0.0, 0.0);
 
-		_velocity(0) = velocity(0);
-		_velocity(1) = velocity(1);
-		_velocity(2) = velocity(2);
+		//_velocity(0) = velocity(0);
+		//_velocity(1) = velocity(1);
+		//_velocity(2) = velocity(2);
 		
-		return _velocity;		
+		//return _velocity;		
+		
+		return linear_velocity;
 	}
 
 	Eigen::Vector3d DynamicModel::Quaternion_to_Euler(Eigen::Quaternion<double> q)
@@ -284,12 +292,11 @@ namespace underwaterVehicle
 		gravitybuoyancy(5) =-(2*((e4*e1)+(e2*e3))*((xg*uwv_weight)-(xb*uwv_buoyancy)))-(2*((e4*e2)-(e1*e3))*((yg*uwv_weight)-(yb*uwv_buoyancy)));		
 	}
 
-	void DynamicModel::thruster_ForceTorque(const Eigen::MatrixXd &thruster_control_matrix, const Eigen::MatrixXd &input_thrust, Eigen::MatrixXd &thrust)
+	//void DynamicModel::thruster_ForceTorque(const Eigen::MatrixXd &thruster_control_matrix, const Eigen::MatrixXd &input_thrust, Eigen::MatrixXd &thrust)
+	void DynamicModel::thruster_ForceTorque(Eigen::MatrixXd &thruster_control_matrix, const Eigen::MatrixXd &input_thrust, Eigen::MatrixXd &thrust)
 	{
 		thrust = thruster_control_matrix*input_thrust;
-
-		if( (input_thrust(2,0) <= 0.001)  && (input_thrust(2,0) >=-0.001))
-			thrust(1,0) = 0.0;
+		
 	}
 
 	void DynamicModel::rot_BI_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& rot_BI)
@@ -372,7 +379,7 @@ namespace underwaterVehicle
 	}
 	
 
-	/*void DynamicModel::setPWMLevels(ThrusterMapping thrusters)
+	void DynamicModel::setPWMLevels(ThrusterMapping thrusters)
 	{	
 		for ( int j = 0; j < number_of_thrusters; j ++) 		// just to make sure the input set to zero before assigning the value
 			ctrl_input[j] = 0.0;
@@ -386,8 +393,7 @@ namespace underwaterVehicle
 
 			switch (thrusters.thruster_mapped_names.at(i))
 			{
-				case underwaterVehicle::SURGE:
-					std::cout<<"Surge "<< i<<std::endl;
+				case underwaterVehicle::SURGE:					
 					if (( dc_volt.at(i) <= factor ) && (dc_volt.at(i) >=-factor))
 						ctrl_input[i] = 0.0;
 					else if ( dc_volt.at(i) < -factor )
@@ -446,20 +452,20 @@ namespace underwaterVehicle
 			}
 		}	
 		
-		std::cout<<"ctrl input = ";
+		/*std::cout<<"ctrl input = ";
 		for(int i = 0; i< 6; i++)
-			std::cout<<ctrl_input[i]<<" ";
-		std::cout<<std::endl;
+			std::cout<<ctrl_input[i]<<" ";rot_IB_euler
+		std::cout<<std::endl;*/
 	
 
 		// # of simulation steps to be performed by the RK4 algorith in one sampling interval
-		std::cout<<"param.sim_per_cycle  "<< param.sim_per_cycle<<std::endl;
+		//std::cout<<"param.sim_per_cycle  "<< param.sim_per_cycle<<std::endl;
 		for (int ii=0; ii < param.sim_per_cycle ; ii++)		
 		    solve();
-	}*/
+	}
 
 	// new method for testing
-	void DynamicModel::setPWMLevels(ThrusterMapping thrusters)
+	/*void DynamicModel::setPWMLevels(ThrusterMapping thrusters)
 	{	
 		for ( int j = 0; j < number_of_thrusters; j ++) 		// just to make sure the input set to zero before assigning the value
 			ctrl_input[j] = 0.0;
@@ -531,7 +537,7 @@ namespace underwaterVehicle
 		//std::cout<<"param.sim_per_cycle  "<< param.sim_per_cycle<<std::endl;
 		for (int ii=0; ii < param.sim_per_cycle ; ii++)		
 		    solve();
-	}
+	}*/
 	
 
 	void DynamicModel::setRPMLevels(ThrusterMapping thrusters)
@@ -690,7 +696,9 @@ namespace underwaterVehicle
 
 		for(int i=0;i<6;i++)
 			velocity(i) = x[i]; 							// velocity
-	
+
+
+			
 		for(int i=0;i<3;i++)
 		{
 			position(i)	= x[i+6];						// position			
@@ -711,23 +719,31 @@ namespace underwaterVehicle
 		}
  
 
-//		for(int i=0;i<number_of_thrusters;i++)
-//			input_thrust(i,0) = u[i]; 						// thrust as input 
+		for(int i=0;i<number_of_thrusters;i++)
+			input_thrust(i,0) = u[i]; 						// thrust as input 
 
 		// The below vehicle dynamics is w.r.t to Body-fixed frame		
 		gravity_buoyancy(orientation_euler, gravitybuoyancy_bff);			
 		hydrodynamic_damping(velocity, damping_matrix_bff);		
-//		thruster_ForceTorque(thruster_control_matrix, input_thrust, thrust_bff);	// Calculating Thrust from the thruster value
+		thruster_ForceTorque(thruster_control_matrix, input_thrust, thrust_bff);	// Calculating Thrust from the thruster value
 
+		//for testing
+		/*
 		for(int i=0;i<DOF;i++)
 			thrust_bff(i,0) = u[i]; 
-	
+		*/
 		inertia_matrix(velocity, mass_matrix_bff);
+
+
+		// simplified equation of motion for an underwater vehicle in BFF
+		Inv_massMatrix = mass_matrix_bff.inverse();
+		acceleration  = Inv_massMatrix * ( thrust_bff - (damping_matrix_bff * velocity) - gravitybuoyancy_bff );
+
 
 		// Now the vehicle dynamics is represented w.r.t Earth-fixed frame
 		//rot_BI_euler (orientation_euler, rot_BI);					// Computing rotation matrix for body fixed frame w.r.t earth fixed frame
 		//rot_IB_euler (rot_BI, rot_IB);							// Computing rotation matrix for earth fixed frame w.r.t body fixed frame
-		rot_IB_euler (orientation_euler, rot_IB);					// Computing rotation matrix for body fixed frame w.r.t earth fixed frame
+/*		rot_IB_euler (orientation_euler, rot_IB);					// Computing rotation matrix for body fixed frame w.r.t earth fixed frame
 
 		jacobianMatrix_euler(orientation_euler, jacob_kin_e);				// Computing Jacobian matrix
 		inverseJacobianMatrix_euler(orientation_euler, inv_jacob_kin_e);		// Computing Inverse of Jacobian matrix
@@ -738,18 +754,30 @@ namespace underwaterVehicle
 		damping_matrix_eff	= invTrans_jacob_e_RIB * damping_matrix_bff * inv_jacob_e_RIB;
 		gravitybuoyancy_eff 	= invTrans_jacob_e_RIB * gravitybuoyancy_bff;
 		thrust_eff 		= invTrans_jacob_e_RIB * thrust_bff;
-
 	
 		Inv_massMatrix = mass_matrix_eff.inverse();
 		
 		// simplified equation of motion for an underwater vehicle
 		acceleration  = Inv_massMatrix * ( thrust_eff - (damping_matrix_eff * velocity) - gravitybuoyancy_eff );
 
+*/		
+
 		for(int i=0;i<6;i++)
 		{
 		    xdot[i]  = acceleration(i);
 		    xdot[i+6]= x[i];	    
 		}
+
+		for(int i=0;i<3;i++)
+		{
+			// velocity.head(3) can also be used, but no idea which is efficient
+			linear_velocity(i) 	= velocity(i);	
+			angular_velocity(i) 	= velocity(i+3);
+			linear_acceleration(i)  = acceleration(i);
+			angular_acceleration(i) = acceleration(i+3);
+		}
+
+		
 
 			
 		//std::cout<<u[0]<<" "<<u[1]<<" "<<u[2]<<" "<<u[3]<<" "<<u[4]<<" "<<u[5]<<std::endl;

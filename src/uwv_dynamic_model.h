@@ -60,7 +60,8 @@ namespace underwaterVehicle
 			void gravity_buoyancy(const Eigen::Vector3d &eulerang, Eigen::Matrix<double,6,1>& gravitybuoyancy);
 			void gravity_buoyancy(const Eigen::Quaternion<double> q, Eigen::Matrix<double,6,1>& gravitybuoyancy);
 			void hydrodynamic_damping(const Eigen::Matrix<double,6,1> &velocity,Eigen::Matrix<double,6,6>& damping_matrix);
-			void thruster_ForceTorque(const Eigen::MatrixXd &thruster_control_matrix, const Eigen::MatrixXd &input_thrust, Eigen::MatrixXd &thrust);
+			//void thruster_ForceTorque(const Eigen::MatrixXd &thruster_control_matrix, const Eigen::MatrixXd &input_thrust, Eigen::MatrixXd &thrust);
+			void thruster_ForceTorque(Eigen::MatrixXd &thruster_control_matrix, const Eigen::MatrixXd &input_thrust, Eigen::MatrixXd &thrust);
 			// setting the input for the model
 			void setPWMLevels(ThrusterMapping thrusters);
 			void setRPMLevels(ThrusterMapping thrusters);
@@ -83,8 +84,13 @@ namespace underwaterVehicle
 			// variables used for simulation			
 			Eigen::MatrixXd input_thrust;				// input thrust 						
 			Eigen::Matrix<double,DOF,1> velocity;  			// This Vector velocity represent the linear and angular velocity of the body-fixed frame
+			Eigen::Vector3d linear_velocity;			// vehicle linear velocity
+			Eigen::Vector3d angular_velocity;			// vehicle angular velocity
 										// velocity(0)=u; velocity(1)=v; velocity(2)=w; velocity(3)=p; velocity(4)=q; velocity(5)=r 
 			Eigen::Matrix<double,DOF,1> acceleration;		// this vector acceleration represent the linear and angular acceleration of the body-fixed frame
+			Eigen::Vector3d linear_acceleration;			// vehicle linear acceleration
+			Eigen::Vector3d angular_acceleration;			// vehicle angular acceleration
+			
 			Eigen::Vector3d position;				// vehicle position
 			Eigen::Vector3d orientation_euler;			// vehicle orienation in eulers angles
 			Eigen::Quaterniond orientation_quaternion;		// vehicle orienation in quaternion angles		

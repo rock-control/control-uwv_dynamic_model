@@ -170,7 +170,7 @@ namespace underwaterVehicle
 		return (double)current_time;
 	}
 
-	Eigen::Vector3d DynamicModel::getVelocity()
+	Eigen::Vector3d DynamicModel::getLinearVelocity()
 	{
 		//Eigen ::Vector3d _velocity(0.0, 0.0, 0.0);
 

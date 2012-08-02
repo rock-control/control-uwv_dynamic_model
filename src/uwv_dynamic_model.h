@@ -49,7 +49,7 @@ namespace underwaterVehicle
 			void init_param(underwaterVehicle::Parameters _param);
 			// functions to get the dagon status
 			Eigen::Vector3d getPosition();			
-			Eigen::Vector3d getVelocity();
+			Eigen::Vector3d getLinearVelocity();
 			Eigen::Vector3d getAcceleration();
 			Eigen::Quaterniond getOrientation_in_Quat();
 			Eigen::Vector3d getOrientation_in_Euler();

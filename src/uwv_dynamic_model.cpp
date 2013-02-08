@@ -453,8 +453,8 @@ namespace underwaterVehicle
 		}	
 		
 		/*std::cout<<"ctrl input = ";
-		for(int i = 0; i< 6; i++)
-			std::cout<<ctrl_input[i]<<" ";rot_IB_euler
+		for(int i = 0; i< number_of_thrusters; i++)
+			std::cout<<ctrl_input[i]<<" ";
 		std::cout<<std::endl;*/
 	
 
@@ -779,25 +779,41 @@ namespace underwaterVehicle
 
 		
 
-			
-		//std::cout<<u[0]<<" "<<u[1]<<" "<<u[2]<<" "<<u[3]<<" "<<u[4]<<" "<<u[5]<<std::endl;
-		//std::cout<<"-----------"<<std::endl;
-		//std::cout<<"thrust_bff";
-		//std::cout<<thrust_bff(0)<<" "<<thrust_bff(1)<<" "<<thrust_bff(2)<<" "<<thrust_bff(3)<<" "<<thrust_bff(4)<<" "<<thrust_bff(5)<<std::endl;
+		/*	
+		std::cout<<u[0]<<" "<<u[1]<<" "<<u[2]<<" "<<u[3]<<" "<<u[4]<<" "<<u[5]<<std::endl;
+		std::cout<<"-----------"<<std::endl;
+		std::cout<<"thrust_bff";
+		std::cout<<thrust_bff(0)<<" "<<thrust_bff(1)<<" "<<thrust_bff(2)<<" "<<thrust_bff(3)<<" "<<thrust_bff(4)<<" "<<thrust_bff(5)<<std::endl;
 
 
-		/*std::cout<<"tb= "<<thrust<<std::endl;		
-		std::cout<<"mass= "<< mass_matrix<<std::endl;		
+		//std::cout<<"tb= "<<thrust<<std::endl;		
+		//std::cout<<"mass= "<< mass_matrix<<std::endl;
+		std::cout << "mass_matrix_bff= " << mass_matrix_bff<<std::endl;
 		std::cout<<"inv mass= "<<Inv_massMatrix<<std::endl;		
-		std::cout<<"Dp= "<<(damping_matrix)<<std::endl;	*/
-		//std::cout<<"V "<<velocity<<std::endl;
-		//std::cout<<"V_dot "<<acceleration<<std::endl;
+		std::cout<<"Dp= "<<(damping_matrix_bff)<<std::endl;	
+		std::cout<<"V "<<velocity<<std::endl;
+		std::cout<<"V_dot "<<acceleration<<std::endl;
 		//std::cout<<"tb= "<<thrust(0)<<" "<<thrust(1)<<" "<<thrust(2)<<" "<<thrust(3)<<" "<<thrust(4)<<" "<<thrust(5)<<std::endl;
 		//std::cout<<"Dp= "<<(damping_matrix)<<std::endl;		
-		//std::cout<<"V "<<velocity(0)<<" "<<velocity(1)<<" "<<velocity(2)<<" "<<velocity(3)<<" "<<velocity(4)<<" "<<velocity(5)<<std::endl;
-		//std::cout<<"V_dot "<<acceleration(0)<<" "<<acceleration(1)<<" "<<acceleration(2)<<" "<<acceleration(3)<<" "<<acceleration(4)<<" "<<acceleration(5)<<std::endl;
-
+		std::cout<<"V "<<velocity(0)<<" "<<velocity(1)<<" "<<velocity(2)<<" "<<velocity(3)<<" "<<velocity(4)<<" "<<velocity(5)<<std::endl;
+		std::cout<<"V_dot "<<acceleration(0)<<" "<<acceleration(1)<<" "<<acceleration(2)<<" "<<acceleration(3)<<" "<<acceleration(4)<<" "<<acceleration(5)<<std::endl;
+		*/
 	}
+	
+	
+	void DynamicModel::setPosition(base::Vector3d v){
+	  position = v;
+	}
+	
+	void DynamicModel::setLinearVelocity(base::Vector3d v){
+	  linear_velocity = v;
+	  
+	}
+	
+	void DynamicModel::setSamplingtime(double dt){
+	  integration_step = dt/param.sim_per_cycle;
+	}  
+	  
 };
 
 	

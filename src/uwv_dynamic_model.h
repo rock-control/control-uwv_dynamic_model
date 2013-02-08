@@ -80,6 +80,9 @@ namespace underwaterVehicle
 			void inverseJacobianMatrix_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& inv_jacob_kin_e);
 			void compute_inv_jacob_e_RIB(const Eigen::Matrix3d & rot_IB, const Eigen::Matrix3d & inv_jacob_kin_e, Eigen::Matrix<double , 6, 6 > & inv_jacob_e_RIB);
 			void compute_invTrans_jacob_e_RIB(const Eigen::Matrix3d & rot_IB, const Eigen::Matrix3d & inv_jacob_kin_e, Eigen::Matrix<double , 6, 6 > & invTrans_jacob_e_RIB);
+			void setPosition(base::Vector3d v);
+			void setLinearVelocity(base::Vector3d v);
+			void setSamplingtime(double dt);
 		private:
 			// variables used for simulation			
 			Eigen::MatrixXd input_thrust;				// input thrust 						

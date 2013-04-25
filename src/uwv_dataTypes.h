@@ -103,6 +103,10 @@ namespace underwaterVehicle
 		double maxPitchPWM, minPitchPWM;
 		double maxYawPWM, minYawPWM;
 		double thrusterVoltage;						// thruster voltage - used for covnerting pwm to corresponding volatage
+		
+		std::vector<double> thruster_coefficients_pwm;
+		std::vector<double> linear_thruster_coefficients_pwm;
+		std::vector<double> square_thruster_coefficients_pwm;
 
 		/************** UWV variables ***************************/		    	
 		std::vector<double> mass_matrix;				// mass Matrix  w.r.t body-fixed frame 

@@ -36,25 +36,7 @@ namespace underwaterVehicle
 		Direction pitch;						// thruster co-efficient in pitch	
 		Direction yaw;							// thruster co-efficient in yaw			
 	};
-	struct ThrusterPWMModelCoefficient
-	{
-		double coefficient_a;
-		double coefficient_b;
-	};
-	struct DirectionPWM
-	{
-		ThrusterPWMModelCoefficient positive;				// thruster co-efficient in positive direction
-		ThrusterPWMModelCoefficient negative;				// thruster co-efficient in negative direction
-	};
-	struct ThrusterCoefficientPWM
-	{
-		DirectionPWM surge;						// thruster co-efficient in surge	
-		DirectionPWM sway;						// thruster co-efficient in sway	
-		DirectionPWM heave;						// thruster co-efficient in heave	
-		DirectionPWM roll;						// thruster co-efficient in roll	
-		DirectionPWM pitch;						// thruster co-efficient in pitch	
-		DirectionPWM yaw;						// thruster co-efficient in yaw			
-	};
+
 	enum MOTION_MODE
         {
 		SURGE = 0,
@@ -95,13 +77,7 @@ namespace underwaterVehicle
 
 		/************** Thrusters parameters ********************/
 		ThrusterCoefficientRPM thruster_coefficient_rpm;
-		ThrusterCoefficientPWM thruster_coefficient_pwm;
-		double maxSurgePWM, minSurgePWM;
-		double maxSwayPWM, minSwayPWM;
-		double maxHeavePWM, minHeavePWM;
-		double maxRollPWM, minRollPWM;
-		double maxPitchPWM, minPitchPWM;
-		double maxYawPWM, minYawPWM;
+
 		double thrusterVoltage;						// thruster voltage - used for covnerting pwm to corresponding volatage
 		
 		std::vector<double> thruster_coefficients_pwm;
@@ -109,12 +85,15 @@ namespace underwaterVehicle
 		std::vector<double> square_thruster_coefficients_pwm;
 
 		/************** UWV variables ***************************/		    	
-		std::vector<double> mass_matrix;				// mass Matrix  w.r.t body-fixed frame 
-		Direction massCoefficient[DOF];					// inertia + added mass for uncoupled 6 DOF
-		Direction linDampCoeff[DOF];					// lineal damping coefficient
-		Direction quadDampCoeff[DOF];					// quadratic damping coefficient
+
+
 		std::vector<double> thruster_control_matrix;			// thruster Control Matrix(TCM)
-		
+		base::Matrix6d linDampMatrix;
+		base::Matrix6d linDampMatrixNeg;
+		base::Matrix6d quadDampMatrix;
+		base::Matrix6d quadDampMatrixNeg;
+		base::Matrix6d massMatrix;
+		base::Matrix6d massMatrixNeg;
 		
 		ThrusterMapping thrusters;
 		

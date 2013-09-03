@@ -59,7 +59,8 @@ namespace underwaterVehicle
 			void inertia_matrix(const Eigen::Matrix<double,6,1> &velocity,Eigen::Matrix<double,6,6>& mass_matrix);
 			void gravity_buoyancy(const Eigen::Vector3d &eulerang, Eigen::Matrix<double,6,1>& gravitybuoyancy);
 			void gravity_buoyancy(const Eigen::Quaternion<double> q, Eigen::Matrix<double,6,1>& gravitybuoyancy);
-			void hydrodynamic_damping(const Eigen::Matrix<double,6,1> &velocity,Eigen::Matrix<double,6,6>& damping_matrix);
+			//void hydrodynamic_damping(const Eigen::Matrix<double,6,1> &velocity,Eigen::Matrix<double,6,6>& damping_matrix);
+			void hydrodynamic_damping(const Eigen::Matrix<double,6,1> &velocity,Eigen::Matrix<double,6,6>& lin_damping_matrix, Eigen::Matrix<double,6,6>& sq_damping_matrix);
 			//void thruster_ForceTorque(const Eigen::MatrixXd &thruster_control_matrix, const Eigen::MatrixXd &input_thrust, Eigen::MatrixXd &thrust);
 			void thruster_ForceTorque(Eigen::MatrixXd &thruster_control_matrix, const Eigen::MatrixXd &input_thrust, Eigen::MatrixXd &thrust);
 			// setting the input for the model
@@ -73,13 +74,7 @@ namespace underwaterVehicle
 		    	// mathematical functions		    	
 			Eigen::Quaternion<double> Euler_to_Quaternion(const Eigen::Vector3d &euler_angles);
 			Eigen::Vector3d Quaternion_to_Euler(Eigen::Quaternion<double> quaterion_angles);
-			void rot_BI_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& rot_BI);
-			void rot_IB_euler(const Eigen::Matrix3d &rot_BI, Eigen::Matrix3d &rot_IB);
-			void rot_IB_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& rot_IB);
-			void jacobianMatrix_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& jacob_kin_e);
-			void inverseJacobianMatrix_euler(const Eigen::Vector3d &eulerang, Eigen::Matrix3d& inv_jacob_kin_e);
-			void compute_inv_jacob_e_RIB(const Eigen::Matrix3d & rot_IB, const Eigen::Matrix3d & inv_jacob_kin_e, Eigen::Matrix<double , 6, 6 > & inv_jacob_e_RIB);
-			void compute_invTrans_jacob_e_RIB(const Eigen::Matrix3d & rot_IB, const Eigen::Matrix3d & inv_jacob_kin_e, Eigen::Matrix<double , 6, 6 > & invTrans_jacob_e_RIB);
+
 			void setPosition(base::Vector3d v);
 			void setLinearVelocity(base::Vector3d v);
 			void setSamplingtime(double dt);
@@ -103,25 +98,22 @@ namespace underwaterVehicle
 			
 			int number_of_thrusters;				// number of thrusters
 			double negative_constant;
-			Eigen::Matrix3d rot_BI;
-			Eigen::Matrix3d rot_IB;
-			Eigen::Matrix3d jacob_kin_e;
-			Eigen::Matrix3d inv_jacob_kin_e;		
-			Eigen::Matrix<double,6,6> inv_jacob_e_RIB;
-			Eigen::Matrix<double,6,6> invTrans_jacob_e_RIB;			
-			Eigen::Matrix3d zero3x3;
+
 
 			/************** UWV variables ***************************/			
 			/* bff - Body Fixed Frame */
 			/* eff - Earth Fixed Frame */
 			Eigen::Matrix<double,DOF,DOF> mass_matrix_bff;		// mass Matrix  w.r.t body-fixed frame
-			Eigen::Matrix<double,DOF,DOF> mass_matrix_eff;		// mass Matrix  w.r.t earth-fixed frame
+
 			Eigen::Matrix<double,DOF,DOF> Inv_massMatrix;		// inverse of mass Matrix  needed in simulation 
 			Eigen::Matrix<double,DOF,DOF> damping_matrix_bff;	// damping Effect Matrix w.r.t body-fixed frame
-			Eigen::Matrix<double,DOF,DOF> damping_matrix_eff;	// damping Effect Matrix w.r.t earth-fixed frame		    					    	
+			Eigen::Matrix<double,DOF,DOF> linear_damping_matrix_bff;
+			Eigen::Matrix<double,DOF,DOF> quad_damping_matrix_bff;
+			
+	    					    	
 			Eigen::MatrixXd thruster_control_matrix;		// thruster Control Matrix(TCM)		
 			Eigen::Matrix<double,DOF,1> gravitybuoyancy_bff;	// gravity and buoyancy Matrix w.r.t body-fixed frame
-			Eigen::Matrix<double,DOF,1> gravitybuoyancy_eff;	// gravity and buoyancy Matrix w.r.t earth-fixed frame
+
 			Eigen::MatrixXd thrust_bff;				// force and torque w.r.t body-fixed frame
 			Eigen::MatrixXd thrust_eff;				// force and torque w.r.t earth-fixed frame
 			/************** UWV physical parameters *****************/			

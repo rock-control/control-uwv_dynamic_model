@@ -448,8 +448,16 @@ namespace underwaterVehicle
 	}
 	
 	void DynamicModel::setLinearVelocity(base::Vector3d v){
-	  linear_velocity = v;
-	  
+	  linear_velocity = v;	  
+	}
+	
+	void DynamicModel::setAngularVelocity(base::Vector3d v){
+	  angular_velocity = v;
+	}
+	
+	void DynamicModel::setOrientation(Eigen::Quaterniond q){
+	  orientation_euler = Quaternion_to_Euler(q);
+	  orientation_quaternion = q;
 	}
 	
 	void DynamicModel::setSamplingtime(double dt){

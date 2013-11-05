@@ -63,9 +63,8 @@ namespace underwaterVehicle
 	};	
 	struct Parameters
 	{			
-		/************** UWV dimensional parameters **************/											
-		base::Vector3d distance_body2centerofmass;			// vector position from the origin of body-fixed frame to center of mass in body-fixed frame				
-		base::Vector3d distance_body2centerofbuoyancy;			// vector position from the origin of body-fixed frame to center of buoyancy				
+		/************** UWV dimensional parameters **************/
+		base::Vector3d distance_body2centerofbuoyancy;		// vector position from the origin of body-fixed frame to center of buoyancy				
 		base::Vector3d distance_body2centerofgravity;			// vector position from the origin of body-fixed frame to center of gravity		
 		/************** UWV physical parameters *****************/
 		double uwv_mass;   						// total mass of the vehicle 

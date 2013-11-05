@@ -77,6 +77,8 @@ namespace underwaterVehicle
 
 			void setPosition(base::Vector3d v);
 			void setLinearVelocity(base::Vector3d v);
+			void setAngularVelocity(base::Vector3d v);
+			void setOrientation(Eigen::Quaterniond q);
 			void setSamplingtime(double dt);
 			void setThrusterVoltage(double voltage);
 		private:

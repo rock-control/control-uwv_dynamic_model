@@ -59,7 +59,7 @@ namespace underwaterVehicle
 		// input vehicle parameter		
 		param = _param;		
 
-		number_of_thrusters = param.thrusters.thruster_value.size();	
+		number_of_thrusters = param.number_of_thrusters;	
 	
 		dc_volt.resize(number_of_thrusters, 0.0);
 		
@@ -225,12 +225,13 @@ namespace underwaterVehicle
 		if (param.uwv_float == true)
 			uwv_buoyancy = uwv_weight;
 
-		gravitybuoyancy(0) =  (uwv_weight-uwv_buoyancy) * sin(e2);
-		gravitybuoyancy(1) = -(uwv_weight-uwv_buoyancy) * (cos(e2)*sin(e1));
-		gravitybuoyancy(2) = -(uwv_weight-uwv_buoyancy) * (cos(e2)*cos(e1));
+		gravitybuoyancy(0) =  0.0;//(uwv_weight-uwv_buoyancy) * sin(e2);
+		gravitybuoyancy(1) = 0.0;//-(uwv_weight-uwv_buoyancy) * (cos(e2)*sin(e1));
+		gravitybuoyancy(2) = uwv_buoyancy - uwv_weight; //-(uwv_weight-uwv_buoyancy) * (cos(e2)*cos(e1));
 		gravitybuoyancy(3) = -( ( (yg*uwv_weight)-(yb*uwv_buoyancy) ) * ( cos(e2)*cos(e1) ) ) + ( ( (zg*uwv_weight)-(zb*uwv_buoyancy) ) * (cos(e2)*sin(e1) ) );
 		gravitybuoyancy(4) =  ( ( (zg*uwv_weight)-(zb*uwv_buoyancy) ) *   sin(e2) ) + ( ( (xg*uwv_weight)-(xb*uwv_buoyancy) ) *( cos(e2)*cos(e1) ) );
 		gravitybuoyancy(5) =- ( ( (xg*uwv_weight)-(xb*uwv_buoyancy) ) * ( cos(e2)*sin(e1) ) ) - ( ( (yg*uwv_weight)-(yb*uwv_buoyancy) ) *sin(e2) );
+		
 	}
 
 	void DynamicModel::gravity_buoyancy(const Eigen::Quaternion<double> q, Eigen::Matrix<double,6,1>& gravitybuoyancy)
@@ -251,9 +252,9 @@ namespace underwaterVehicle
 		if (param.uwv_float == true)
 			uwv_buoyancy = uwv_weight;
 
-		gravitybuoyancy(0) = (2*((e4*e2)-(e1*e3)))*(uwv_weight-uwv_buoyancy);
-		gravitybuoyancy(1) =-(2*((e4*e1)+(e2*e3)))*(uwv_weight-uwv_buoyancy);
-		gravitybuoyancy(2) = (-sq(e4)+sq(e1)+sq(e2)-sq(e3))*(uwv_weight-uwv_buoyancy);
+		gravitybuoyancy(0) = 0.0;//(2*((e4*e2)-(e1*e3)))*(uwv_weight-uwv_buoyancy);
+		gravitybuoyancy(1) = 0.0;// -(2*((e4*e1)+(e2*e3)))*(uwv_weight-uwv_buoyancy);
+		gravitybuoyancy(2) = uwv_buoyancy - uwv_weight;//(-sq(e4)+sq(e1)+sq(e2)-sq(e3))*(uwv_weight-uwv_buoyancy);
 		gravitybuoyancy(3) = ((-sq(e4)+sq(e1)+sq(e2)-sq(e3))*((yg*uwv_weight)-(yb*uwv_buoyancy)))+(2*((e4*e1)+(e2*e3))*((zg*uwv_weight)-(zb*uwv_buoyancy)));
 		gravitybuoyancy(4) =-((-sq(e4)+sq(e1)+sq(e2)-sq(e3))*((xg*uwv_weight)-(xb*uwv_buoyancy)))+(2*((e4*e2)-(e1*e3))*((zg*uwv_weight)-(zb*uwv_buoyancy)));
 		gravitybuoyancy(5) =-(2*((e4*e1)+(e2*e3))*((xg*uwv_weight)-(xb*uwv_buoyancy)))-(2*((e4*e2)-(e1*e3))*((yg*uwv_weight)-(yb*uwv_buoyancy)));		
@@ -266,29 +267,30 @@ namespace underwaterVehicle
 		
 	}
 
-	void DynamicModel::setPWMLevels(ThrusterMapping thrusters)
+	void DynamicModel::setPWMLevels(base::samples::Joints thrusters)
 	{	
 		for ( int j = 0; j < number_of_thrusters; j ++) 		// just to make sure the input set to zero before assigning the value
 			ctrl_input[j] = 0.0;
-
-		pwm_to_dc(thrusters, dc_volt);
-
-		float factor = 0.01;
 		
-		for ( int i = 0; i < number_of_thrusters; i ++)
-		{
-			
-			if (( dc_volt.at(i) <= factor ) && (dc_volt.at(i) >= -factor))
-			      ctrl_input[i] = 0.0;
-			else{
-			  double thruster_coefficient = param.thruster_coefficients_pwm[i]
-							 + param.linear_thruster_coefficients_pwm[i] * dc_volt.at(i)
-							 + param.square_thruster_coefficients_pwm[i] * dc_volt.at(i) * fabs(dc_volt.at(i));
-			  ctrl_input[i] = thruster_coefficient * fabs(dc_volt.at(i)) * dc_volt.at(i);
+		if(thrusters.size() == number_of_thrusters){
+		  pwm_to_dc(thrusters, dc_volt);
+
+		  float factor = 0.01;
+		  
+		  for ( int i = 0; i < number_of_thrusters; i ++)
+		  {
 			  
-			}  
-		}	
-		
+			  if (( dc_volt.at(i) <= factor ) && (dc_volt.at(i) >= -factor))
+				ctrl_input[i] = 0.0;
+			  else{
+			    double thruster_coefficient = param.thruster_coefficients_pwm[i]
+							  + param.linear_thruster_coefficients_pwm[i] * dc_volt.at(i)
+							  + param.square_thruster_coefficients_pwm[i] * dc_volt.at(i) * fabs(dc_volt.at(i));
+			    ctrl_input[i] = thruster_coefficient * fabs(dc_volt.at(i)) * dc_volt.at(i);
+			    
+			  }  
+		  }	
+		}
 
 	
 
@@ -299,61 +301,21 @@ namespace underwaterVehicle
 	}
 
 
-	void DynamicModel::setRPMLevels(ThrusterMapping thrusters)
+	void DynamicModel::setRPMLevels(base::samples::Joints thrusters)
 	{	
 		for ( int j = 0; j < number_of_thrusters; j ++) 		// just to make sure the input set to zero before assigning the value
 			ctrl_input[j] = 0.0;
-
-		for ( int i = 0; i < number_of_thrusters; i ++)
-		{
-			switch (thrusters.thruster_mapped_names.at(i))
-			{
-				case underwaterVehicle::SURGE:
-					if ( thrusters.thruster_value.at(i) < -0.0 )
-						ctrl_input[i] = param.thruster_coefficient_rpm.surge.negative * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));
-					else
-						ctrl_input[i] = param.thruster_coefficient_rpm.surge.positive * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));	
-					break;				
-
-				case underwaterVehicle::SWAY:
-					if ( thrusters.thruster_value.at(i) < -0.0 )
-						ctrl_input[i] = param.thruster_coefficient_rpm.sway.negative * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));
-					else
-						ctrl_input[i] = param.thruster_coefficient_rpm.sway.positive * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));					
-					break;
-
-				case underwaterVehicle::HEAVE:
-					if ( thrusters.thruster_value.at(i) < -0.0 )
-						ctrl_input[i] = param.thruster_coefficient_rpm.heave.negative * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));
-					else
-						ctrl_input[i] = param.thruster_coefficient_rpm.heave.positive * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));					
-
-					break;
-
-				case underwaterVehicle::ROLL:
-					if ( thrusters.thruster_value.at(i) < -0.0 )
-						ctrl_input[i] = param.thruster_coefficient_rpm.roll.negative * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));
-					else
-						ctrl_input[i] = param.thruster_coefficient_rpm.roll.positive * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));					
-
-					break;
-
-				case underwaterVehicle::PITCH:
-					if ( thrusters.thruster_value.at(i) < -0.0 )
-						ctrl_input[i] = param.thruster_coefficient_rpm.pitch.negative * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));
-					else
-						ctrl_input[i] = param.thruster_coefficient_rpm.pitch.positive * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));					
-					break;
-
-				case underwaterVehicle::YAW:
-					if ( thrusters.thruster_value.at(i) < -0.0 )
-						ctrl_input[i] = param.thruster_coefficient_rpm.yaw.negative * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));
-					else
-						ctrl_input[i] = param.thruster_coefficient_rpm.yaw.positive * (fabs(thrusters.thruster_value.at(i)) * thrusters.thruster_value.at(i));					
-					break;
-
-			}
-		}	
+		
+		if(thrusters.size() == number_of_thrusters){
+		
+		  for ( int i = 0; i < number_of_thrusters; i ++)
+		  {	
+			  if(thrusters[i].speed < -0.0)
+			    ctrl_input[i] = param.thruster_coefficient_rpm[i].negative * (fabs(thrusters[i].speed) * thrusters[i].speed);
+			  else
+			    ctrl_input[i] = param.thruster_coefficient_rpm[i].positive * (fabs(thrusters[i].speed) * thrusters[i].speed);
+		  }
+		}
 		
 		// # of simulation steps to be performed by the RK4 algorith in one sampling interval
 		
@@ -362,13 +324,13 @@ namespace underwaterVehicle
 	}
 
 	
-	void DynamicModel::pwm_to_dc(const ThrusterMapping thrusters, std::vector<double> & dc_volt)
+	void DynamicModel::pwm_to_dc(const base::samples::Joints thrusters, std::vector<double> & dc_volt)
 	{	
 
 		// param.thrusterVolatage in volts - Thruster Maximum voltage
 		for ( int i = 0; i < number_of_thrusters; i ++)
 		{	
-			dc_volt.at(i) = param.thrusterVoltage * thrusters.thruster_value.at(i);
+			dc_volt.at(i) = param.thrusterVoltage * thrusters[i].raw;
 		}
 							
 	}			
@@ -423,7 +385,9 @@ namespace underwaterVehicle
 		Inv_massMatrix = mass_matrix_bff.inverse();
 		Eigen::Matrix<double,DOF,1> damp = linear_damping_matrix_bff * velocity + quad_damping_matrix_bff * (velocity.cwiseAbs().cwiseProduct(velocity));  
 		acceleration  = Inv_massMatrix * ( thrust_bff - damp - gravitybuoyancy_bff );
-
+		
+		//std::cout << "Force tourque: " << thrust_bff.transpose() << std::endl;
+		//std::cout << "Gravity-Buoyancy: " << gravitybuoyancy_bff.transpose() << std::endl;
 		
 
 		for(int i=0;i<6;i++)

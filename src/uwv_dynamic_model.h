@@ -23,6 +23,7 @@
 
 #include "RK4Integrator.hpp"	// need this header for simulation - it solves a system of n first order differential equations.
 #include "uwv_dataTypes.h"
+#include "base/samples/Joints.hpp"
 
 #define sq(x) (x)*(x)
 #define PI 3.141592653589793
@@ -64,10 +65,10 @@ namespace underwaterVehicle
 			//void thruster_ForceTorque(const Eigen::MatrixXd &thruster_control_matrix, const Eigen::MatrixXd &input_thrust, Eigen::MatrixXd &thrust);
 			void thruster_ForceTorque(Eigen::MatrixXd &thruster_control_matrix, const Eigen::MatrixXd &input_thrust, Eigen::MatrixXd &thrust);
 			// setting the input for the model
-			void setPWMLevels(ThrusterMapping thrusters);
-			void setRPMLevels(ThrusterMapping thrusters);
+			void setPWMLevels(base::samples::Joints thrusters);
+			void setRPMLevels(base::samples::Joints thrusters);
 			void setThrust(std::vector<double> inputthrust);
-			void pwm_to_dc(const ThrusterMapping thrusters, std::vector<double> & dc_volt);
+			void pwm_to_dc(const base::samples::Joints thrusters, std::vector<double> & dc_volt);
 			// simulating the model
 			//void DERIV(const double t, const double *x, const double *u, double *xdot);
 			void DERIV(const double t, double *x, const double *u, double *xdot);

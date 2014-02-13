@@ -75,13 +75,14 @@ namespace underwaterVehicle
 		double gravity;							// gravity
 
 		/************** Thrusters parameters ********************/
-		ThrusterCoefficientRPM thruster_coefficient_rpm;
 
 		double thrusterVoltage;						// thruster voltage - used for covnerting pwm to corresponding volatage
 		
 		std::vector<double> thruster_coefficients_pwm;
 		std::vector<double> linear_thruster_coefficients_pwm;
 		std::vector<double> square_thruster_coefficients_pwm;
+		
+		std::vector<Direction> thruster_coefficient_rpm;
 
 		/************** UWV variables ***************************/		    	
 
@@ -93,16 +94,14 @@ namespace underwaterVehicle
 		base::Matrix6d quadDampMatrixNeg;
 		base::Matrix6d massMatrix;
 		base::Matrix6d massMatrixNeg;
-		
-		ThrusterMapping thrusters;
-		
+	
 		int sim_per_cycle;						// number of RK4 simulations per sampling interval
 		int plant_order;						// plant order - number of states in the model - generally 12 states -> 3 position, 3 orientation and 6 linear&angular velocity  
 		int ctrl_order;							// ctrl order - number of controllable inputs
 		double samplingtime;           					// Sampling time used in simulation
 		double initial_condition[12];					// Initial conditions used for simulation - currently it 12 states
 		double initial_time;              				// Initial time	used for simulation*/
-	
+		int number_of_thrusters;
 
 	};								    	
 	

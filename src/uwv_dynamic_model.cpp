@@ -328,7 +328,7 @@ namespace underwaterVehicle
 	{	
 
 		// param.thrusterVolatage in volts - Thruster Maximum voltage
-		for ( int i = 0; i < number_of_thrusters; i ++)
+		for ( int i = 0; i < number_of_thrusters && i < thrusters.size(); i ++)
 		{	
 			dc_volt.at(i) = param.thrusterVoltage * thrusters[i].raw;
 		}

@@ -30,31 +30,31 @@ namespace underwaterVehicle
 	void DynamicModel::init_param(underwaterVehicle::Parameters _param)
 	{		
 		// initialising the following Matrices and Vectors to Zero		
-		mass_matrix_bff		= Eigen::Matrix<double, DOF, DOF>	::Zero();
-		mass_matrix_eff		= Eigen::Matrix<double, DOF, DOF>	::Zero();
-		Inv_massMatrix 		= Eigen::Matrix<double, DOF, DOF>	::Zero();
-		gravitybuoyancy_bff	= Eigen::Matrix<double, DOF, 1>		::Zero();
-		gravitybuoyancy_eff	= Eigen::Matrix<double, DOF, 1>		::Zero();
-		damping_matrix_bff    	= Eigen::Matrix<double, DOF, DOF>	::Zero();
-		damping_matrix_eff    	= Eigen::Matrix<double, DOF, DOF>	::Zero();
-		velocity       		= Eigen::Matrix<double, DOF, 1>		::Zero();
-		acceleration   		= Eigen::Matrix<double, DOF, 1>		::Zero();
-		orientation_euler	= Eigen::Vector3d			::Zero();
-		position		= Eigen::Vector3d			::Zero();
-		linear_velocity		= Eigen::Vector3d			::Zero();
-		angular_velocity	= Eigen::Vector3d			::Zero();
-		linear_acceleration	= Eigen::Vector3d			::Zero();
-		angular_acceleration	= Eigen::Vector3d			::Zero();
-		rot_BI			= Eigen::Matrix3d			::Zero();
-		rot_IB			= Eigen::Matrix3d			::Zero();
-		jacob_kin_e		= Eigen::Matrix3d			::Zero();
-		inv_jacob_kin_e 	= Eigen::Matrix3d			::Zero();
-		inv_jacob_e_RIB		= Eigen::Matrix<double, 6, 6>		::Zero();
+		mass_matrix_bff		    = Eigen::Matrix<double, DOF, DOF>	::Zero();
+		mass_matrix_eff		    = Eigen::Matrix<double, DOF, DOF>	::Zero();
+		Inv_massMatrix 		    = Eigen::Matrix<double, DOF, DOF>	::Zero();
+		gravitybuoyancy_bff	    = Eigen::Matrix<double, DOF, 1>     ::Zero();
+		gravitybuoyancy_eff	    = Eigen::Matrix<double, DOF, 1>     ::Zero();
+		damping_matrix_bff	    = Eigen::Matrix<double, DOF, DOF>	::Zero();
+        damping_matrix_eff      = Eigen::Matrix<double, DOF, DOF>	::Zero();
+		velocity       		    = Eigen::Matrix<double, DOF, 1>		::Zero();
+		acceleration   		    = Eigen::Matrix<double, DOF, 1>		::Zero();
+		orientation_euler	    = Eigen::Vector3d			        ::Zero();
+		position		        = Eigen::Vector3d			        ::Zero();
+		linear_velocity		    = Eigen::Vector3d			        ::Zero();
+		angular_velocity	    = Eigen::Vector3d			        ::Zero();
+		linear_acceleration	    = Eigen::Vector3d			        ::Zero();
+		angular_acceleration	= Eigen::Vector3d			        ::Zero();
+		rot_BI			        = Eigen::Matrix3d			        ::Zero();
+		rot_IB			        = Eigen::Matrix3d			        ::Zero();
+		jacob_kin_e		        = Eigen::Matrix3d			        ::Zero();
+		inv_jacob_kin_e 	    = Eigen::Matrix3d			        ::Zero();
+		inv_jacob_e_RIB		    = Eigen::Matrix<double, 6, 6>		::Zero();
 		invTrans_jacob_e_RIB	= Eigen::Matrix<double, 6, 6>		::Zero();	
-		zero3x3			= Eigen::Matrix3d			::Zero();
+		zero3x3			        = Eigen::Matrix3d			        ::Zero();
 
-		uwv_weight		= 0.0;
-		uwv_buoyancy		= 0.0;
+		uwv_weight		        = 0.0;
+		uwv_buoyancy		    = 0.0;
 				
 		orientation_quaternion.w() = 1.0;
 		orientation_quaternion.x() = 0.0;
@@ -80,12 +80,12 @@ namespace underwaterVehicle
 	
 		dc_volt.resize(number_of_thrusters, 0.0);
 		
-		input_thrust		= Eigen::MatrixXd::Zero(number_of_thrusters,1);
-		thrust_bff		= Eigen::MatrixXd::Zero(DOF,1);
-		thrust_eff		= Eigen::MatrixXd::Zero(DOF,1);		
+		input_thrust		    = Eigen::MatrixXd::Zero(number_of_thrusters,1);
+		thrust_bff		        = Eigen::MatrixXd::Zero(DOF,1);
+		thrust_eff		        = Eigen::MatrixXd::Zero(DOF,1);		
 		thruster_control_matrix = Eigen::MatrixXd::Zero(DOF, number_of_thrusters);
 
-		temp_thrust		= Eigen::MatrixXd::Zero(DOF,0.0);
+		temp_thrust		        = Eigen::MatrixXd::Zero(DOF,0.0);
 
 		// # assigning the mass matrix values from the input
 		// # currently it is done in a function
@@ -113,8 +113,10 @@ namespace underwaterVehicle
 		}				
 
 		// uwv physical parameters 										
-		uwv_weight = param.uwv_mass * param.gravity; 						//W=mass*gravity
-		uwv_buoyancy = param.waterDensity * param.uwv_volume * param.gravity; 			//Buoyancy = density * volume * gravity - density of pure water at 20°C in kg/m^3 is 998.2 - volume of cylinder (lwh)	
+        //W=mass*gravity
+		uwv_weight = param.uwv_mass * param.gravity; 						
+        //Buoyancy = density * volume * gravity - density of pure water at 20°C in kg/m^3 is 998.2 - volume of cylinder (lwh)	
+		uwv_buoyancy = param.waterDensity * param.uwv_volume * param.gravity; 			
 
 		negative_constant = 1e-6;
 	}
@@ -397,56 +399,102 @@ namespace underwaterVehicle
 					if (( dc_volt.at(i) <= factor ) && (dc_volt.at(i) >=-factor))
 						ctrl_input[i] = 0.0;
 					else if ( dc_volt.at(i) < -factor )
-						ctrl_input[i] = (param.thruster_coefficient_pwm.surge.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.surge.negative.coefficient_b *dc_volt.at(i) ) ;						
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.surge.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         +
+                                        (param.thruster_coefficient_pwm.surge.negative.coefficient_b *dc_volt.at(i) ) ;						
+                    }
 					else
-						ctrl_input[i] = (param.thruster_coefficient_pwm.surge.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.surge.positive.coefficient_b * dc_volt.at(i) );
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.surge.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.surge.positive.coefficient_b * dc_volt.at(i) );
+                    }
 					break;				
 
 				case underwaterVehicle::SWAY:
 					if (( dc_volt.at(i) <= factor ) && (dc_volt.at(i) >=-factor))					
 						ctrl_input[i] = 0.0;
 					else if ( dc_volt.at(i) < -factor )
-						ctrl_input[i] = (param.thruster_coefficient_pwm.sway.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.sway.negative.coefficient_b * dc_volt.at(i) );
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.sway.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.sway.negative.coefficient_b * dc_volt.at(i) );
+                    }
 					else
-						ctrl_input[i] = (param.thruster_coefficient_pwm.sway.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.sway.positive.coefficient_b * dc_volt.at(i) );					
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.sway.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.sway.positive.coefficient_b * dc_volt.at(i) );					
+                    }
 					break;
 
 				case underwaterVehicle::HEAVE:
 					if ( dc_volt.at(i) == 0.0 )
 						ctrl_input[i] = 0.0;
 					else if ( dc_volt.at(i) < -0.0 )
-						ctrl_input[i] = (param.thruster_coefficient_pwm.heave.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.heave.negative.coefficient_b * dc_volt.at(i) );
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.heave.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.heave.negative.coefficient_b * dc_volt.at(i) );
+                    }
 					else
-						ctrl_input[i] = (param.thruster_coefficient_pwm.heave.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.heave.positive.coefficient_b *  dc_volt.at(i) );					
-
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.heave.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.heave.positive.coefficient_b *  dc_volt.at(i) );					
+                    }
 					break;
 
 				case underwaterVehicle::ROLL:
 					if ( dc_volt.at(i) == 0.0 )
 						ctrl_input[i] = 0.0;
 					else if ( dc_volt.at(i) < -0.0 )
-						ctrl_input[i] = (param.thruster_coefficient_pwm.roll.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.roll.negative.coefficient_b * dc_volt.at(i) );
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.roll.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.roll.negative.coefficient_b * dc_volt.at(i) );
+                    }
 					else
-						ctrl_input[i] = (param.thruster_coefficient_pwm.roll.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.roll.positive.coefficient_b *  dc_volt.at(i) );					
-
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.roll.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.roll.positive.coefficient_b *  dc_volt.at(i) );					
+                    }
 					break;
 
 				case underwaterVehicle::PITCH:
 					if ( dc_volt.at(i) == 0.0 )
 						ctrl_input[i] = 0.0;
 					else if ( dc_volt.at(i) < -0.0 )
-						ctrl_input[i] = (param.thruster_coefficient_pwm.pitch.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.pitch.negative.coefficient_b * dc_volt.at(i) );
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.pitch.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.pitch.negative.coefficient_b * dc_volt.at(i) );
+                    }
 					else
-						ctrl_input[i] = (param.thruster_coefficient_pwm.pitch.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.pitch.positive.coefficient_b * dc_volt.at(i) );					
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.pitch.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.pitch.positive.coefficient_b * dc_volt.at(i) );					
+                    }
 					break;
 
 				case underwaterVehicle::YAW:
 					if (( dc_volt.at(i) <= factor ) && (dc_volt.at(i) >=-factor))
 						ctrl_input[i] = 0.0;
 					else if ( dc_volt.at(i) < -factor )
-						ctrl_input[i] = (param.thruster_coefficient_pwm.yaw.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.yaw.negative.coefficient_b * dc_volt.at(i) );
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.yaw.negative.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.yaw.negative.coefficient_b * dc_volt.at(i) );
+                    }
 					else
-						ctrl_input[i] = (param.thruster_coefficient_pwm.yaw.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i))) + (param.thruster_coefficient_pwm.yaw.positive.coefficient_b * dc_volt.at(i) );					
+                    {
+						ctrl_input[i] = (param.thruster_coefficient_pwm.yaw.positive.coefficient_a * (fabs(dc_volt.at(i)) * dc_volt.at(i)))
+                                         + 
+                                        (param.thruster_coefficient_pwm.yaw.positive.coefficient_b * dc_volt.at(i) );					
+                    }
 					break;
 
 			}
@@ -680,7 +728,8 @@ namespace underwaterVehicle
 			}
 		}
 							
-	}			
+	}
+			
 	
 	//DERIV (current_time, plant_state, ctrl_input, f1);
 	//void DynamicModel :: DERIV(const double t, const double *x, const double *u, double *xdot)
@@ -695,28 +744,27 @@ namespace underwaterVehicle
 		    V(5) = r    V_dot(5) = r_dot        X(5) = r    X_dot(5) = r_dot    x(11)= rot z   X_dot(11)= r*/
 
 		for(int i=0;i<6;i++)
-			velocity(i) = x[i]; 							// velocity
-
+			velocity(i) = x[i]; 							        // velocity
 
 			
 		for(int i=0;i<3;i++)
 		{
-			position(i)	= x[i+6];						// position			
+			position(i)	= x[i+6];						            // position			
 			
 			if (x[i+9] > PI)
 			{
 				orientation_euler(i) 	= x[i+9] - 2*PI;			// orientation	
-				x[i+9]			= x[i+9] - 2*PI;
+				x[i+9]			        = x[i+9] - 2*PI;
 			}			 
 			else if (x[i+9] < -PI)
 			{
 				orientation_euler(i) 	= x[i+9] + 2*PI;
-				x[i+9]		 	= x[i+9] + 2*PI;
+				x[i+9]		 	        = x[i+9] + 2*PI;
 
 			}
 			else
 				orientation_euler(i) = x[i+9];  
-		}
+		}        
  
 
 		for(int i=0;i<number_of_thrusters;i++)
@@ -743,7 +791,7 @@ namespace underwaterVehicle
 		// Now the vehicle dynamics is represented w.r.t Earth-fixed frame
 		//rot_BI_euler (orientation_euler, rot_BI);					// Computing rotation matrix for body fixed frame w.r.t earth fixed frame
 		//rot_IB_euler (rot_BI, rot_IB);							// Computing rotation matrix for earth fixed frame w.r.t body fixed frame
-/*		rot_IB_euler (orientation_euler, rot_IB);					// Computing rotation matrix for body fixed frame w.r.t earth fixed frame
+		rot_IB_euler (orientation_euler, rot_IB);					// Computing rotation matrix for body fixed frame w.r.t earth fixed frame
 
 		jacobianMatrix_euler(orientation_euler, jacob_kin_e);				// Computing Jacobian matrix
 		inverseJacobianMatrix_euler(orientation_euler, inv_jacob_kin_e);		// Computing Inverse of Jacobian matrix
@@ -758,9 +806,7 @@ namespace underwaterVehicle
 		Inv_massMatrix = mass_matrix_eff.inverse();
 		
 		// simplified equation of motion for an underwater vehicle
-		acceleration  = Inv_massMatrix * ( thrust_eff - (damping_matrix_eff * velocity) - gravitybuoyancy_eff );
-
-*/		
+		acceleration  = Inv_massMatrix * ( thrust_eff - (damping_matrix_eff * velocity) - gravitybuoyancy_eff );		
 
 		for(int i=0;i<6;i++)
 		{
@@ -775,9 +821,7 @@ namespace underwaterVehicle
 			angular_velocity(i) 	= velocity(i+3);
 			linear_acceleration(i)  = acceleration(i);
 			angular_acceleration(i) = acceleration(i+3);
-		}
-
-		
+		}		
 
 		/*	
 		std::cout<<u[0]<<" "<<u[1]<<" "<<u[2]<<" "<<u[3]<<" "<<u[4]<<" "<<u[5]<<std::endl;
@@ -798,21 +842,8 @@ namespace underwaterVehicle
 		std::cout<<"V "<<velocity(0)<<" "<<velocity(1)<<" "<<velocity(2)<<" "<<velocity(3)<<" "<<velocity(4)<<" "<<velocity(5)<<std::endl;
 		std::cout<<"V_dot "<<acceleration(0)<<" "<<acceleration(1)<<" "<<acceleration(2)<<" "<<acceleration(3)<<" "<<acceleration(4)<<" "<<acceleration(5)<<std::endl;
 		*/
-	}
+	}	
 	
-	
-	void DynamicModel::setPosition(base::Vector3d v){
-	  position = v;
-	}
-	
-	void DynamicModel::setLinearVelocity(base::Vector3d v){
-	  linear_velocity = v;
-	  
-	}
-	
-	void DynamicModel::setSamplingtime(double dt){
-	  integration_step = dt/param.sim_per_cycle;
-	}  
 	  
 };
 

@@ -24,6 +24,7 @@
 #include "RK4Integrator.hpp"	// need this header for simulation - it solves a system of n first order differential equations.
 #include "uwv_dataTypes.h"
 #include "base/samples/Joints.hpp"
+#include "base/samples/RigidBodyState.hpp"
 
 #define sq(x) (x)*(x)
 #define PI 3.141592653589793

@@ -368,8 +368,12 @@ namespace underwaterVehicle
 			else
 				orientation_euler(i) = x[i+9];  
 		}
- 
-
+/* 
+                for(int i = 0; i< 3; i++){
+                  std::cout << " i " << i << ": "  << position(i) << " " << velocity(i) << " " << orientation_euler(i) << " " << velocity(i + 3);
+                }
+ std::cout  << std::endl;
+*/
 		for(int i=0;i<number_of_thrusters;i++)
 			input_thrust(i,0) = u[i]; 						// thrust as input 
 
@@ -409,18 +413,41 @@ namespace underwaterVehicle
 	
 	void DynamicModel::setPosition(base::Vector3d v){
 	  position = v;
+          
+         for(int i = 0; i < 3; i++){
+           plant_state[i + 6] = v(i);
+         }           
+       
 	}
 	
 	void DynamicModel::setLinearVelocity(base::Vector3d v){
-	  linear_velocity = v;	  
+	  linear_velocity = v;
+          
+         for(int i = 0; i < 3; i++){
+           plant_state[i] = v(i);
+         }          
+          
 	}
 	
 	void DynamicModel::setAngularVelocity(base::Vector3d v){
 	  angular_velocity = v;
+          
+         for(int i = 0; i < 3; i++){
+           plant_state[i + 3] = v(i);
+         }            
+          
 	}
 	
 	void DynamicModel::setOrientation(Eigen::Quaterniond q){
 	  orientation_euler = Quaternion_to_Euler(q);
+          
+          if(base::samples::RigidBodyState::isValidValue(orientation_euler) ){
+          
+            for(int i = 0; i < 3; i++){
+              plant_state[i + 9] = orientation_euler(i);
+            }         
+          }
+          
 	  orientation_quaternion = q;
 	}
 	

@@ -1,6 +1,6 @@
 /* 
  * PURPOSE --- Header file for a class for a 4'th order Runge-Kutta 
- * method for solving a system of  n first order differential equations. 
+ * method for solving a system of n first order differential equations.
  * If the initial equation is in the form of n'th order differential equation
  * it must be converted to a system of n first order differential
  * equations.
@@ -10,69 +10,96 @@
 #ifndef RK4_INTEGRATOR_HPP
 #define RK4_INTEGRATOR_HPP
 
-#include <stdlib.h>
-#include <vector>
+#include <base/Eigen.hpp>
 
+namespace uwv_dynamic_model
+{
 class RK4_SIM
 {
-    public:
-	// Constructor
-	// The arguments are self-explanatory
-	// If you specify initial conditions, the parameter _initial_state 
-	// should point to a vector of size _plant_order, so that correct 
-	// initialization could be performed.
-	RK4_SIM(int _plant_order,
-		int _ctrl_order,
-		double _integration_step = 0.0001, 
-		double _initial_time = 0.0, 
-		double *_initial_state = NULL);  
+public:
 
-	// Destructor
-	virtual ~RK4_SIM();
+	/*
+	 * Constructor
+	 */
+	RK4_SIM(uint 		   &controlOrder,
+			uint 			systemOrder,
+			double 			integrationStep);
 
-	// Initilaizes simulation parameters
-	void init_param(double _integration_step, 
-		double _initial_time, 
-		double *_initial_state);  
+	/**
+	 *	Performs one step simulation
+	 */
+	void calcStates(Eigen::VectorXd 		&systemStates,
+			double 					&currentTime,
+			const Eigen::VectorXd 	&controlInput);
 
-	void solve (void); // Performs one step simulation
+	/*
+	 * Uses the system's dynamic equations in order to calculate the
+	 * acceleration according to the current system states and control
+	 * input.
+	 * This function is overloaded in the derived class.
+	 */
+	virtual void calcAcceleration(Eigen::VectorXd &acceleration,
+			const Eigen::VectorXd &velocity,
+			const Eigen::VectorXd &controlInput) = 0;
 
-	// DERIV contains the dynamic equations of the system in the 
-	// form: xdot = f(t,x,u); arguments are the time t, present state 
-	// values x, the present control value u, and values of the derivatives 
-	// of the states xdot (calculated inside of the funtcion). 
-	// It is overloaded in the derived class!!!
-	//virtual void DERIV(const double t, const double *x, 
-	//	const double *u, double *xdot) {};
-	virtual void DERIV(const double t, double *x, 
-		const double *u, double *xdot) {};
+private:
 
-    protected:
-	int plant_order; // Num of plant states
-	int ctrl_order; // Num of control inputs
-	double integration_step; // Integration step size
+	/**
+	 * Number of system states
+	 */
+	const int gSystemOrder;
 
-    public:
+	/**
+	 * Number of control inputs
+	 */
+	const int gControlOrder;
 
-	std::vector<double> plant_state; // Current System states
-	std::vector<double> ctrl_input; // Current Controller output
+	/**
+	 * Integration step size
+	 */
+	const double gIntegStep;
 
-	double current_time;  // Current time
-	int rk4_sim_err;   // Variable to hold an error number
 
-    private:
-	std::vector<double> f1; 
-	std::vector<double> f2; 
-	std::vector<double> f3; 
-	std::vector<double> f4; 
-	std::vector<double> temp; // Runge-Kutta Coefficients
+	/**
+	 * Calculates the k1 coefficient of the Runge-Kutta Integration method
+	 */
+	inline void calcK1 (Eigen::VectorXd &k1,
+			const Eigen::VectorXd &velocity,
+			const Eigen::VectorXd &controlInput);
 
-	// Functions which calculate RK coefficients
-	inline void F1 (void); 
-	inline void F2 (void);
-	inline void F3 (void);
-	inline void F4 (void);
+	/**
+	 * Calculates the k2 coefficient of the Runge-Kutta Integration method
+	 */
+	inline void calcK2 (Eigen::VectorXd &k2,
+			const Eigen::VectorXd &k1,
+			const Eigen::VectorXd &velocity,
+			const Eigen::VectorXd &controlInput);
+
+	/**
+	 * Calculates the k3 coefficient of the Runge-Kutta Integration method
+	 */
+	inline void calcK3 (Eigen::VectorXd &k3,
+			const Eigen::VectorXd &k2,
+			const Eigen::VectorXd &velocity,
+			const Eigen::VectorXd &controlInput);
+
+	/**
+	 * Calculates the k4 coefficient of the Runge-Kutta Integration method
+	 */
+	inline void calcK4 (Eigen::VectorXd &k4,
+			const Eigen::VectorXd &k3,
+			const Eigen::VectorXd &velocity,
+			const Eigen::VectorXd &controlInput);
+
+	/**
+	 * Update the given k coefficient according to the integration step value
+	 */
+	inline void updateCoefficient(Eigen::VectorXd &k);
+
+	bool checkConstruction(uint &controlOrder, uint &systemOrder,
+			double &integrationStep);
 };
-#endif
+};
 
+#endif
 

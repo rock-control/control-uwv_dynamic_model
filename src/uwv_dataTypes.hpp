@@ -34,16 +34,7 @@ namespace uwv_dynamic_model
 		/**
 		 * Number of controllable inputs
 		 */
-		int controlOrder;
-
-		/**
-		 * Number of states considered in the model. Generally 12 states:
-		 * 		- 3 for position
-		 * 		- 3 for orientation
-		 * 		- 3 for linear velocity
-		 * 		- 3 for angular velocity
-		 */
-		int systemOrder;
+		uint controlOrder;
 
 		/**
 		 * Sampling time used in the simulation (in seconds)
@@ -53,7 +44,7 @@ namespace uwv_dynamic_model
 		/**
 		 * Number of RK4 iterations per sampling interval
 		 */
-		int simPerCycle;
+		uint simPerCycle;
 
 		/**
 		 * Intertia matrices for positive and negative speeds
@@ -149,15 +140,10 @@ namespace uwv_dynamic_model
 		 */
 		base::VectorXd initialStates;
 
-		/**
-		 *	Initial time used for simulation (in seconds)
-		 */
-		double initialTime;
-
 		Parameters():
-			systemOrder(12),
 			controlOrder(4),
 			samplingTime(0.1),
+			simPerCycle(10),
 			inertiaMatrixPos(Eigen::MatrixXd::Zero(6,6)),
 			inertiaMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
 			coriolisMatrixPos(Eigen::MatrixXd::Zero(6,6)),
@@ -169,13 +155,13 @@ namespace uwv_dynamic_model
 			thrustConfigMatrix(Eigen::MatrixXd::Zero(6,1)),
 			centerOfBuoyancy(Eigen::VectorXd::Zero(3)),
 			centerOfGravity(Eigen::VectorXd::Zero(3)),
+			uwvMass(0),
+			uwvVolume(0),
+			uwvFloat(false),
 			waterDensity(998.2),
 			gravity(9.81),
-			simPerCycle(10),
-			initialStates(Eigen::VectorXd::Zero(12)),
-			initialTime(0),
-			uwvMass(0),
-			uwvVolume(0)
+			thrusterVoltage(0),
+			initialStates(Eigen::VectorXd::Zero(12))
 		{
 			thrusterCoeffPWM.positive = 0;
 			thrusterCoeffPWM.negative = 0;

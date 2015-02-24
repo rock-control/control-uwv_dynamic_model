@@ -26,33 +26,128 @@ class DynamicModel : public RK4_SIM
 {
 
 public:
-	/********************* Data functions **************************************/
-	DynamicModel(uint controlOrder, uint plantOrder = 12, double samplingTime = 0.01,
+	DynamicModel(uint controlOrder, double samplingTime = 0.01,
 				 uint simPerCycle = 10, double initialTime = 0.0);
 
 	/**
 	 * Initializes the model parameters. Run this function before sending control
 	 * commands to the model.
 	 */
-	void initParameters(const uwv_dynamic_model::Parameters &uwvParameters);
+	bool initParameters(const uwv_dynamic_model::Parameters &uwvParameters);
 
 	/**
 	 * Function for sending PWM commands to the model.
 	 * @param controlInput - PWM commands that should be applied to the model
 	 */
-	void sendPWMCommands(const base::samples::Joints &controlInput);
+	bool sendPWMCommands(const base::samples::Joints &controlInput);
 
 	/**
 	 * Function for sending RPM commands to the model.
 	 * @param controlInput - RPM commands that should be applied to the model
 	 */
-	void sendRPMCommands(const base::samples::Joints &controlInput);
+	bool sendRPMCommands(const base::samples::Joints &controlInput);
 
 	/**
 	 * Function for sending Effort commands to the model.
 	 * @param controlInput - Effort commands that should be applied to the model
 	 */
-	void sendEffortCommands(const base::samples::Joints &controlInput);
+	bool sendEffortCommands(const base::samples::Joints &controlInput);
+
+	/**
+	 * Sets the general UWV parameters
+	 * @param uwvParamaters - Structures containing the uwv parameters
+	 */
+	bool setUWVParameters(const uwv_dynamic_model::Parameters &uwvParameters);
+
+	/**
+	 * Resets position, orientation and velocities of the model
+	 */
+	void resetStates(void);
+
+	/**
+	 * Gets the underwater vehicle parameters
+	 * @param uwvParameters - Underwater vehicle parameters
+	 */
+	void getUWVParameters(uwv_dynamic_model::Parameters &uwvParameters);
+
+	/**
+	 * Gets the position
+	 * @param position - Position vector
+	 */
+	void getPosition(base::Position &position);
+
+	/**
+	 * Gets the euler orientation
+	 * @param eulerOrientation - Euler orientation vector
+	 */
+	void getEulerOrientation(Eigen::Vector3d &eulerOrientation);
+
+	/**
+	 * Gets the quaternion orientation
+	 * @param quatOrientation - Quaternion orientation
+	 */
+	void getQuatOrienration(base::Orientation &quatOrientation);
+
+	/**
+	 * Gets the linear velocity
+	 * @param linearVelocity - Linear velocity vector
+	 */
+	void getLinearVelocity(base::Vector3d &linearVelocity);
+
+	/**
+	 * Gets the angular velocity
+	 * @param angularVelocity - Angular velocity vector
+	 */
+	void getAngularVelocity(base::Vector3d &angularVelocity);
+
+	/**
+	 * Gets the linear acceleration
+	 * @param linearAcceleration - Linear acceleration vector
+	 */
+	void getLinearAcceleration(base::Vector3d &linearAcceleration);
+
+	/**
+	 * Gets the angular acceleration
+	 * @param angularAcceleration - Angular acceleration vector
+	 */
+	void getAngularAcceleration(base::Vector3d &angularAcceleration);
+
+	/**
+	 * Gets the the system states (pose and velocity)
+	 * @param systemStates - System states vector (size = 12)
+	 */
+	void getStates(Eigen::VectorXd &systemStates);
+
+	/**
+	 * Gets the current efforts' vector
+	 * @param efforts - Vector containing the current effort (forces and moments)
+	 */
+	void getEfforts(base::Vector6d &efforts);
+
+	/**
+	 * Gets the simulation time in seconds
+	 * @param simulationTime - Simulation time in seconds
+	 */
+	void getSimulationTime(double &simulationTime);
+
+	/**
+	 * Gets the sampling time
+	 * @para samplingTime - Sampling time variable
+	 */
+	void getSamplingTime(double &samplingTime);
+
+	/**
+	 * Gets the number of simulations (iterations) per cycle
+	 * @param simPerCycle - Number of simulations per cycle
+	 */
+	void getSimPerCycle(int &simPerCycle);
+
+	/**
+	 * Converts from euler angles to quaternions.
+	 */
+	void eulerToQuaternion(base::Quaterniond &quaternion, const Eigen::Vector3d &eulerAngles);
+
+protected:
 
 	/**
 	 * Calculates the vehicle acceleration based on the current velocity,
@@ -65,8 +160,50 @@ public:
 	 * @param controlInput - Current control input
 	 */
 	void calcAcceleration(Eigen::VectorXd &velocityAndAcceleration,
-						  const Eigen::VectorXd &velocity,
-			  	  	  	  const Eigen::VectorXd &controlInput);
+						  const base::Vector6d &velocity,
+			  	  	  	  const base::Vector6d &controlInput);
+
+private:
+
+	/**
+	 * Calculates the inverse of the inertia matrix. It considers both positive and negative
+	 * inertia matrices.
+	 */
+	void calcInvInertiaMatrix(base::Matrix6d &invInertiaMatrix, const base::Vector6d &velocity);
+
+	/**
+	 * Functions for calculating the hydrodynamics effects. They consider both positive
+	 * and negative hydrodynamic matrices.
+	 */
+	void calcCoriolisEffect(base::Vector6d &coriolisEffect, const base::Vector6d &velocity);
+	void calcLinDamping(base::Vector6d &linDamping, const base::Vector6d &velocity);
+	void calcQuadDamping(base::Vector6d &quadDamping, const base::Vector6d &velocity);
+	void calcGravityBuoyancy(base::Vector6d &gravitybuoyancy, const Eigen::Vector3d &eulerOrientation);
+
+	/**
+	 * Converts the PWM signal into its equivalent in DC voltage
+	 */
+	void pwmToDC(Eigen::VectorXd &dcVolt, const base::samples::Joints &controlInput);
+
+	/**
+	 * Converts the DC voltage into thrust force for each one of the thrusters
+	 */
+	void dcToThrustForce(Eigen::VectorXd &thrustForces, const Eigen::VectorXd &dcVolt);
+
+	/**
+	 * Converts the RPM commands into thrusters' forces
+	 */
+	void rpmToThrustForce(Eigen::VectorXd &thrustForces, const base::samples::Joints &controlInput);
+
+	/**
+	 * Converts the individual thrusters' forces into the general effort for the vehicle
+	 */
+	void thrustForceToEffort(base::Vector6d &forcesAndMoments, const Eigen::VectorXd &thrustInput);
+
+	/**
+	 * Updates the current states (pose and velocity)
+	 */
+	void updateStates(Eigen::VectorXd &newSystemStates);
 
 	/**
 	 * Sets the Inertia matrices
@@ -103,148 +240,6 @@ public:
 	void setQuadDampingMatrix(const base::Matrix6d &quadDampingMatrixPos,
 						      const base::Matrix6d &quadDampingMatrixNeg =
 								    Eigen::MatrixXd::Zero(6,6));
-	/**
-	 * Sets the Thrust Configuration Matrix
-	 * @param thrustConfigMatrix - Thrust Configuration Matrix
-	 */
-	void setThrustConfigMatrix(const Eigen::MatrixXd &thrustConfigMatrix);
-
-	/**
-	 * Sets the vehicle position
-	 * @param position - New position
-	 */
-	void setPosition(const Eigen::Vector3d &position);
-
-	/**
-	 * Sets the vehicle euler orientation
-	 * @param eulerOrientation - New euler orientation
-	 */
-	void setEulerOrientation(const Eigen::Vector3d &eulerOrientation);
-
-	/**
-	 * Sets the vehicle quaternion orientation
-	 * @param quatOrientation - New quaternion orientation
-	 */
-	void setQuatOrientation(const Eigen::Quaterniond &quatOrientation);
-
-	/**
-	 * Sets the vehicle linear velocity
-	 * @param linearVelocity - New linear velocity
-	 */
-	void setLinearVelocity(const Eigen::Vector3d &linearVelocity);
-
-	/**
-	 * Sets the vehicle angular velocity
-	 * @param angularVelocity - New angular velocity
-	 */
-	void setAngularVelocity(const Eigen::Vector3d &angularVelocity);
-
-	/**
-	 * Resets position, orientation and velocities of the model
-	 */
-	void resetAll(void);
-
-	/**
-	 * Gets the underwater vehicle parameters
-	 * @param uwvParameters - Underwater vehicle parameters
-	 */
-	void getUWVParameters(uwv_dynamic_model::Parameters &uwvParameters);
-
-	/**
-	 * Gets the position
-	 * @param position - Position vector
-	 */
-	void getPosition(base::Position &position);
-
-	/**
-	 * Gets the euler orientation
-	 * @param eulerOrientation - Euler orientation vector
-	 */
-	void getEulerOrientation(base::Vector3d &eulerOrientation);
-
-	/**
-	 * Gets the quaternion orientation
-	 * @param quatOrientation - Quaternion orientation
-	 */
-	void getQuatOrienration(base::Quaterniond &quatOrientation);
-
-	/**
-	 * Gets the linear velocity
-	 * @param linearVelocity - Linear velocity vector
-	 */
-	void getLinearVelocity(base::Vector3d &linearVelocity);
-
-	/**
-	 * Gets the angular velocity
-	 * @param angularVelocity - Angular velocity vector
-	 */
-	void getAngularVelocity(base::Vector3d &angularVelocity);
-
-	/**
-	 * Gets the linear acceleration
-	 * @param linearAcceleration - Linear acceleration vector
-	 */
-	void getLinearAcceleration(base::Vector3d &linearAcceleration);
-
-	/**
-	 * Gets the angular acceleration
-	 * @param angularAcceleration - Angular acceleration vector
-	 */
-	void getAngularAcceleration(base::Vector3d &angularAcceleration);
-
-	/**
-	 * Gets the simulation time in seconds
-	 * @param simulationTime - Simulation time in seconds
-	 */
-	void getSimulationTime(double &simulationTime);
-
-	/**
-	 * Converts from euler angles to quaternions.
-	 */
-	void eulerToQuaternion(Eigen::Quaterniond &quaternion, const Eigen::Vector3d &eulerAngles);
-
-private:
-
-	/**
-	 * Calculates the inverse of the inertia matrix. It considers both positive and negative
-	 * inertia matrices.
-	 */
-	void calcInvInertiaMatrix(base::Matrix6d &invInertiaMatrix, const Eigen::VectorXd &velocity);
-
-	/**
-	 * Functions for calculating the hydrodynamics effects. They consider both positive
-	 * and negative hydrodynamic matrices.
-	 */
-	void calcCoriolisEffect(Eigen::VectorXd &coriolisEffect, const Eigen::VectorXd &velocity);
-	void calcLinDamping(Eigen::VectorXd &linDamping, const Eigen::VectorXd &velocity);
-	void calcQuadDamping(Eigen::VectorXd &quadDamping, const Eigen::VectorXd &velocity);
-	void calcGravityBuoyancy(Eigen::VectorXd &gravitybuoyancy, const Eigen::Vector3d &eulerOrientation);
-	void calcGravityBuoyancy(Eigen::VectorXd &gravitybuoyancy, const Eigen::Quaterniond &quatOrientation);
-
-	/**
-	 * Converts the PWM signal into its equivalent in DC voltage
-	 */
-	void pwmToDC(Eigen::VectorXd &dcVolt, const base::samples::Joints &controlInput);
-
-	/**
-	 * Converts the DC voltage into thrust force for each one of the thrusters
-	 */
-	void dcToThrustForce(Eigen::VectorXd &thrustForces, const Eigen::VectorXd &dcVolt);
-
-	/**
-	 * Converts the RPM commands into thrusters' forces
-	 */
-	void rpmToThrustForce(Eigen::VectorXd &thrustForces, const base::samples::Joints &controlInput);
-
-	/**
-	 * Converts the individual thrusters' forces into the general effort for the vehicle
-	 */
-	void thrustForceToEffort(Eigen::VectorXd &forcesAndMoments, const Eigen::VectorXd &thrustInput);
-
-	/**
-	 * Updates the current states (pose and velocity)
-	 */
-	void updateStates(Eigen::VectorXd &newSystemStates);
 
 /**
  * FUNCTIONS FOR CHECKING FOR USER'S MISUSE
@@ -253,12 +248,12 @@ private:
 	/**
 	 * Checks if the variables provided in the class construction are valid
 	 */
-	bool checkConstruction(double &samplingTime, uint &simPerCycle, double &initialTime);
+	void checkConstruction(double &samplingTime, uint &simPerCycle, double &initialTime);
 
 	/**
 	 * Determinant of inertiaMatrix must be different from zero
 	 */
-	bool checkInitialization(base::Matrix6d &inertiaMatrixPos, base::Matrix6d &inertiaMatrixNeg);
+	void checkParameters(const uwv_dynamic_model::Parameters &pwvParameters);
 
 	/**
 	 * Checks if the positive matrices were set.
@@ -273,36 +268,33 @@ private:
 	/**
 	 * Checks if the provided controlInput is valid
 	 */
-	bool checkControlInput(const base::samples::Joints &controlInput, std::string element);
+	void checkControlInput(const base::samples::Joints &controlInput, std::string element);
 
 	/**
 	 * Checks if at least one of the PWM coefficients was set
 	 */
-	bool checkPWMCoefficients(void);
+	void checkPWMCoefficients(void);
 
 	/**
 	 * Checks if the RPM coefficients were set
 	 */
-	bool checkRPMCoefficients(void);
+	void checkRPMCoefficients(void);
 
 	/**
 	 * Checks if any error flag is activated
 	 */
-	bool checkErrors(void);
+	void checkErrors(void);
 
 
 /**
  * SYSTEM STATES
  */
 
-	uwv_dynamic_model::Parameters gUWVParameters;
-
 	/**
 	 * Pose variables
 	 */
 	Eigen::Vector3d gPosition;
 	Eigen::Vector3d gEulerOrientation;
-	Eigen::Quaterniond gQuatOrientation;
 
 	/**
 	 * Velocity variables
@@ -319,12 +311,7 @@ private:
 	/**
 	 * Vector with forces and moments applied to the vehicle
 	 */
-	Eigen::VectorXd gEfforts;
-
-	/**
-	 * Current system states
-	 */
-	Eigen::VectorXd gSystemStates;
+	base::Vector6d gEfforts;
 
 	/**
 	 * Current time
@@ -346,6 +333,13 @@ private:
 	 */
 	int gControlOrder;
 
+
+/**
+ * SIMULATION PARAMETERS
+ */
+
+	double gSamplingTime;
+	int gSimPerCycle;
 
 /**
  * 	MODEL PARAMETERS
@@ -387,10 +381,11 @@ private:
 	Direction gLinThrusterCoeffPWM;
 	Direction gQuadThrusterCoeffPWM;
 	Direction gThrusterCoeffRPM;
+	double gThrusterVoltage;
 
 
 /**
- * RESTORING FORCES
+ * RESTORING FORCES PARAMETERS
  */
 
 	/**
@@ -403,13 +398,24 @@ private:
 	 */
 	double gBuoyancy;
 
+	base::Vector3d gCenterOfGravity;
+	base::Vector3d gCenterOfBuoyancy;
+	bool gUWVFloat;
+	double gUWVMass;
+	double gUWVVolume;
+	double gGravity;
+	double gWaterDensity;
+
+
 /**
 * ERROR VARIABLES
 */
 	bool errorModelInit;
 	bool errorConstruction;
 	bool errorControlInput;
-	bool errorInitialization;
+	bool errorSetParameters;
+	bool errorPWMCoeff;
+	bool errorRPMCoeff;
 	bool errorStatus;
 };
 };

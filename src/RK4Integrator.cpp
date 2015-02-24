@@ -27,15 +27,17 @@
 
 namespace uwv_dynamic_model
 {
-RK4_SIM::RK4_SIM(uint &controlOrder, uint systemOrder, double integrationStep)
+RK4_SIM::RK4_SIM(uint &controlOrder, double integrationStep)
 :   gControlOrder(controlOrder),
-    gSystemOrder(systemOrder),
+    gSystemOrder(12),
     gIntegStep(integrationStep)
 {
+	error = false;
+	checkConstruction(controlOrder, integrationStep);
 }
 
 void RK4_SIM::calcStates(Eigen::VectorXd &systemStates,
-		double &currentTime, const Eigen::VectorXd &controlInput)
+		double &currentTime, const base::Vector6d &controlInput)
 {
 	/**
 	 * systemStates:
@@ -49,55 +51,58 @@ void RK4_SIM::calcStates(Eigen::VectorXd &systemStates,
 	 *
 	 */
 
-	// Runge-Kuta coefficients
-	Eigen::VectorXd k1 = Eigen::VectorXd::Zero(gSystemOrder);
-	Eigen::VectorXd k2 = Eigen::VectorXd::Zero(gSystemOrder);
-	Eigen::VectorXd k3 = Eigen::VectorXd::Zero(gSystemOrder);
-	Eigen::VectorXd k4 = Eigen::VectorXd::Zero(gSystemOrder);
-
-	// Calculating Runge-Kutta coefficients
-	calcK1(k1, 	   systemStates, controlInput);
-	calcK2(k2, k1, systemStates, controlInput);
-	calcK3(k3, k2, systemStates, controlInput);
-	calcK4(k4, k3, systemStates, controlInput);
-
-	// Updating simulation time
-	currentTime += gIntegStep;
-
-	// Calculating the system states
-	for (int i=0; i < gSystemOrder; i++)
-		systemStates[i] +=	(1.0/6.0) * (k1[i] + 2.0*k2[i] + 2.0*k3[i] + k4[i]);
-
-	// Checking if the angle is between [-PI, PI], and if not, doing the
-	// necessary corrections
-	for (int i = 0; i < 3; i++)
+	if(!error)
 	{
-		if (systemStates[i+3] > M_PI)
-			systemStates[i+3] -= 2*M_PI;
+		base::Vector6d velocity = systemStates.tail(6);
 
-		else if (systemStates[i+3] < -M_PI)
-			systemStates[i+3] += 2*M_PI;
+		// Runge-Kuta coefficients
+		Eigen::VectorXd k1 = Eigen::VectorXd::Zero(gSystemOrder);
+		Eigen::VectorXd k2 = Eigen::VectorXd::Zero(gSystemOrder);
+		Eigen::VectorXd k3 = Eigen::VectorXd::Zero(gSystemOrder);
+		Eigen::VectorXd k4 = Eigen::VectorXd::Zero(gSystemOrder);
+
+		// Calculating Runge-Kutta coefficients
+		calcK1(k1, 	   velocity, controlInput);
+		calcK2(k2, k1, velocity, controlInput);
+		calcK3(k3, k2, velocity, controlInput);
+		calcK4(k4, k3, velocity, controlInput);
+
+		// Updating simulation time
+		currentTime += gIntegStep;
+
+		// Calculating the system states
+		for (int i=0; i < gSystemOrder; i++)
+			systemStates[i] +=	(1.0/6.0) * (k1[i] + 2.0*k2[i] + 2.0*k3[i] + k4[i]);
+
+		// Checking if the angle is between [-PI, PI], and if not, doing the
+		// necessary corrections
+		for (int i = 0; i < 3; i++)
+		{
+			if (systemStates[i+3] > M_PI)
+				systemStates[i+3] -= 2*M_PI;
+
+			else if (systemStates[i+3] < -M_PI)
+				systemStates[i+3] += 2*M_PI;
+		}
 	}
 }
 
 inline void RK4_SIM::calcK1 (Eigen::VectorXd &k1,
-							 const Eigen::VectorXd &systemStates,
-							 const Eigen::VectorXd &controlInput)
+							 const base::Vector6d &velocity,
+							 const base::Vector6d &controlInput)
 {
-	Eigen::VectorXd velocity = systemStates.block(6,0,6,1);
 	calcAcceleration(k1, velocity, controlInput);
 
 	updateCoefficient(k1);
 }
 
 inline void RK4_SIM::calcK2 (Eigen::VectorXd &k2, const Eigen::VectorXd &k1,
-		const Eigen::VectorXd &systemStates,
-		const Eigen::VectorXd &controlInput)
+							 base::Vector6d velocity,
+							 const base::Vector6d &controlInput)
 {
-	Eigen::VectorXd velocity = Eigen::VectorXd::Zero(6);
 
 	for (int i=0; i < 6; i++)
-		velocity[i] = systemStates[i+6] + 0.5*k1[i+6];
+		velocity[i] += 0.5*k1[i+6];
 
 	calcAcceleration(k2, velocity, controlInput);
 
@@ -105,13 +110,12 @@ inline void RK4_SIM::calcK2 (Eigen::VectorXd &k2, const Eigen::VectorXd &k1,
 }
 
 inline void RK4_SIM::calcK3 (Eigen::VectorXd &k3, const Eigen::VectorXd &k2,
-		const Eigen::VectorXd &systemStates,
-		const Eigen::VectorXd &controlInput)
+							 base::Vector6d velocity,
+							 const base::Vector6d &controlInput)
 {
-	Eigen::VectorXd velocity = Eigen::VectorXd::Zero(6);
 
 	for (int i=0; i < 6; i++)
-		velocity[i] = systemStates[i+6] + 0.5*k2[i+6];
+		velocity[i] += 0.5*k2[i+6];
 
 	calcAcceleration(k3, velocity, controlInput);
 
@@ -119,13 +123,11 @@ inline void RK4_SIM::calcK3 (Eigen::VectorXd &k3, const Eigen::VectorXd &k2,
 }
 
 inline void RK4_SIM::calcK4 (Eigen::VectorXd &k4, const Eigen::VectorXd &k3,
-		const Eigen::VectorXd &systemStates,
-		const Eigen::VectorXd &controlInput)
+							 base::Vector6d velocity,
+							 const base::Vector6d &controlInput)
 {
-	Eigen::VectorXd velocity = Eigen::VectorXd::Zero(6);
-
 	for (int i=0; i < 6; i++)
-		velocity[i] = systemStates[i+6] + k3[i+6];
+		velocity[i] += k3[i+6];
 
 	calcAcceleration(k4, velocity, controlInput);
 
@@ -138,8 +140,7 @@ void RK4_SIM::updateCoefficient(Eigen::VectorXd &k)
 		k[i] = gIntegStep * k[i];
 }
 
-bool RK4_SIM::checkConstruction(uint &controlOrder, uint &systemOrder,
-					   double &integrationStep)
+void RK4_SIM::checkConstruction(uint &controlOrder, double &integrationStep)
 {
 	std::string textElement;
 	bool checkError = false;
@@ -147,11 +148,6 @@ bool RK4_SIM::checkConstruction(uint &controlOrder, uint &systemOrder,
 	if (controlOrder == 0)
 	{
 		textElement = "control order";
-		checkError = true;
-	}
-	else if (systemOrder == 0)
-	{
-		textElement = "system order";
 		checkError = true;
 	}
 	else if (integrationStep <= 0)
@@ -165,8 +161,34 @@ bool RK4_SIM::checkConstruction(uint &controlOrder, uint &systemOrder,
 		LOG_ERROR("\n\n\x1b[31m (Library: RK4Integrator.cpp)"
 				  " The %s should be greater than zero.\x1b[0m\n\n",
 					textElement.c_str());
-		return false;
+		error = true;
 	}
-	return true;
+}
+
+void RK4_SIM::checkInputs(Eigen::VectorXd &systemStates, double &currentTime,
+						  const base::Vector6d &controlInput)
+{
+	if( !(systemStates.size() == 12))
+	{
+		LOG_ERROR("\n\n\x1b[31m (Library: RK4Integrator.cpp)"
+			      " The systemStates should have a size equal to 12,"
+			      " but its size is equal to %i.\x1b[0m\n\n",
+			       systemStates.size());
+		error = true;
+	}
+
+	if( !(controlInput.size() > 0))
+	{
+		LOG_ERROR("\n\n\x1b[31m (Library: RK4Integrator.cpp)"
+			      " The controlInput has a size equal to 0 (zero).\x1b[0m\n\n");
+		error = true;
+	}
+
+	if( !(currentTime > 0))
+	{
+		LOG_ERROR("\n\n\x1b[31m (Library: RK4Integrator.cpp)"
+			      " The currentTime shoud be positive.\x1b[0m\n\n");
+		error = true;
+	}
 }
 };

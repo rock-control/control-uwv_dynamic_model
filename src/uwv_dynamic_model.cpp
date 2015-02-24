@@ -11,30 +11,35 @@
 /*  DFKI - BREMEN 2011                                                     */
 /***************************************************************************/
 
-//TODO check if initialStates has size equal to 12
+
 #include "uwv_dynamic_model.hpp"
 #include <base/Logging.hpp>
 
 namespace uwv_dynamic_model
 {
-	DynamicModel::DynamicModel(uint controlOrder, uint systemOrder,
-							   double samplingTime, uint simPerCycle,
-							   double initialTime)
-		: RK4_SIM(controlOrder, systemOrder, (samplingTime/(double)simPerCycle))
+	DynamicModel::DynamicModel(uint controlOrder, double samplingTime,
+							   uint simPerCycle,  double initialTime)
+		: RK4_SIM(controlOrder, (samplingTime/(double)simPerCycle))
 	{
 		// Error flags. The errorModelInit will be unset when the model is initialized
-		errorModelInit = true;
-		errorConstruction = false;
-		errorControlInput = false;
-		errorInitialization = false;
-		errorStatus = false;
+		errorModelInit 		= true;
+		errorConstruction 	= false;
+		errorControlInput 	= false;
+		errorSetParameters 	= false;
+		errorPWMCoeff 		= false;
+		errorRPMCoeff 		= false;
+		errorStatus 		= false;
 
 		// Checks the arguments provided to the constructor and then initialize the
 		// members of the class
-		if(checkConstruction(samplingTime, simPerCycle, initialTime))
+		checkConstruction(samplingTime, simPerCycle, initialTime);
+
+		if(!errorConstruction)
 		{
-			gSystemOrder = systemOrder;
+			gSystemOrder = 12;
 			gControlOrder = controlOrder;
+			gSamplingTime = samplingTime;
+			gSimPerCycle = simPerCycle;
 			gCurrentTime = initialTime;
 
 			// States variables
@@ -51,7 +56,7 @@ namespace uwv_dynamic_model
 			setCoriolisMatrix(Eigen::MatrixXd::Zero(6,6));
 			setLinDampingMatrix(Eigen::MatrixXd::Zero(6,6));
 			setQuadDampingMatrix(Eigen::MatrixXd::Zero(6,6));
-			setThrustConfigMatrix(Eigen::MatrixXd::Zero(6,1));
+			gThrustConfigMatrix = Eigen::MatrixXd::Zero(6,1);
 
 			// Thrusters' coefficients
 			gThrusterCoeffPWM.positive = 0;
@@ -62,181 +67,174 @@ namespace uwv_dynamic_model
 			gQuadThrusterCoeffPWM.negative = 0;
 			gThrusterCoeffRPM.positive = 0;
 			gThrusterCoeffRPM.negative = 0;
+			gThrusterVoltage = 0;
 
 			// Restoring forces' variables
 			gWeight = 0;
 			gBuoyancy = 0;
+			gCenterOfGravity = Eigen::VectorXd::Zero(3);
+			gCenterOfBuoyancy = Eigen::VectorXd::Zero(3);
+			gUWVFloat = false;
+			gUWVMass = 0;
+			gUWVVolume = 0;
+			gGravity = 0;
+			gWaterDensity = 0;
 		}
-		// If there is an error with the contructor's argument, the
-		// errorConstruction flag is set
+	}
+
+	bool DynamicModel::initParameters(const uwv_dynamic_model::Parameters &uwvParameters)
+	{
+		// Checks if the model wasn't initialized yet
+		if(errorModelInit)
+		{
+			// Checks if there was any error in the library
+			if(!errorConstruction)
+			{
+				// Unsets the errorModelInit because the model is being initialized
+				errorModelInit = false;
+
+				Eigen::VectorXd statesInit = uwvParameters.initialStates;
+
+				// Updates initial system states
+				updateStates(statesInit);
+
+				// Sets the uwv parameters
+				setUWVParameters(uwvParameters);
+
+				// Checks if the positive inertia, positive linear damping and thrust
+				// configuration matrices were set
+				checkPositiveMatrices();
+
+				if(!errorStatus)
+					return true;
+				else
+					return false;
+			}
+			else
+				return false;
+		}
 		else
-			errorConstruction = true;
-
-	}
-
-	void DynamicModel::initParameters(const uwv_dynamic_model::Parameters &uwvParameters)
-	{
-		// Unset the errorModelInit because the model is being initialized
-		errorModelInit = false;
-
-		gUWVParameters = uwvParameters;
-
-		// System states
-		Eigen::VectorXd statesInit = uwvParameters.initialStates;
-		updateStates(statesInit);
-		gEfforts	=	Eigen::VectorXd::Zero(gControlOrder);
-		gCurrentTime	=	uwvParameters.initialTime;
-
-		// Model parameters
-		setInertiaMatrix(uwvParameters.inertiaMatrixPos, uwvParameters.inertiaMatrixNeg);
-		setCoriolisMatrix(uwvParameters.coriolisMatrixPos, uwvParameters.coriolisMatrixNeg);
-		setLinDampingMatrix(uwvParameters.linDampMatrixPos, uwvParameters.linDampMatrixPos);
-		setQuadDampingMatrix(uwvParameters.quadDampMatrixPos, uwvParameters.quadDampMatrixNeg);
-		setThrustConfigMatrix(uwvParameters.thrustConfigMatrix);
-
-		// Checks if the positive inertia, positive linear damping and thrust
-		// configuration matrices were set
-		checkPositiveMatrices();
-
-		// Checking if the negative matrices were set. If not, they will
-		// receive the respective positive matrix value
-		checkNegativeMatrices(gInertiaMatrixNeg, gInertiaMatrixPos);
-		checkNegativeMatrices(gCoriolisMatrixNeg, gCoriolisMatrixPos);
-		checkNegativeMatrices(gLinDampMatrixNeg, gLinDampMatrixPos);
-		checkNegativeMatrices(gQuadDampMatrixNeg, gQuadDampMatrixPos);
-
-		gThrusterCoeffPWM = uwvParameters.thrusterCoeffPWM;
-		gLinThrusterCoeffPWM = uwvParameters.linThrusterCoeffPWM;
-		gQuadThrusterCoeffPWM = uwvParameters.quadThrusterCoeffPWM;
-		gThrusterCoeffRPM = uwvParameters.thrusterCoeffRPM;
-
-		// Restoring forces
-		gWeight			= 	uwvParameters.uwvMass		* uwvParameters.gravity;
-		gBuoyancy		= 	uwvParameters.waterDensity  * uwvParameters.gravity *
-				            uwvParameters.uwvVolume;
-
-		// Checks if the inertia matrices are invertible
-		if (!checkInitialization(gInertiaMatrixPos, gInertiaMatrixNeg))
-			errorInitialization = true;
-	}
-
-	void DynamicModel::sendPWMCommands(const base::samples::Joints &controlInput)
-	{
-		 // If the flag errorStatus is set, this function won't be executed.
-		 // This garantee that the error message will be printed only once
-		if(!errorStatus)
 		{
-			// Checks if there is any error flag activated
-			if(checkErrors())
-			{
-				// Checks if the control input is valid
-				if(checkControlInput(controlInput, "raw"))
-				{
-					//Calculates the forces and moments generated by the thrusters
-
-					Eigen::VectorXd thrustersForce 	=	Eigen::VectorXd::Zero(6);
-					Eigen::VectorXd dcVoltage 		=	Eigen::VectorXd::Zero(6);
-					pwmToDC(dcVoltage, controlInput);
-					dcToThrustForce(thrustersForce, dcVoltage);
-					thrustForceToEffort(gEfforts, thrustersForce);
-				}
-				else
-				{
-					for (int i = 0; i < gControlOrder; i++)
-						gEfforts[i] = 0.0;
-					errorControlInput = true;
-				}
-
-				// Performs iterations to calculate the new system's states
-				for (int i=0; i < gUWVParameters.simPerCycle ; i++)
-					calcStates(gSystemStates, gCurrentTime, gEfforts);
-
-				// Updates the new system's states
-				updateStates(gSystemStates);
-			}
-			else
-				errorStatus = true;
+			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
+					" The model was already initialized, use the function"
+					" setUWVParameters instead if you want to change any"
+					" UWV parameter.\x1b[0m\n\n");
+			return false;
 		}
 	}
 
-	void DynamicModel::sendRPMCommands(const base::samples::Joints &controlInput)
+	bool DynamicModel::sendPWMCommands(const base::samples::Joints &controlInput)
 	{
-		// If the flag errorStatus is set, this function won't be executed.
-		// This garantee that the error message will be printed only once
+		// Checks if the control input is valid
+		checkControlInput(controlInput, "raw");
+
+		// Checks if the PWM coefficients were properly set
+		checkPWMCoefficients();
+
+		// Checks if there is any error flag activated
+		checkErrors();
+
+		// Checks if there was any error in the library
 		if(!errorStatus)
 		{
-			// Checks if there is any error flag activated
-			if(checkErrors())
-			{
-				// Checks if the control input is valid
-				if(checkControlInput(controlInput, "speed"))
-				{
-					/**
-					 *Calculates the forces and moments generated by the thrusters
-					 */
+			Eigen::VectorXd thrustersForce 	=	Eigen::VectorXd::Zero(6);
+			Eigen::VectorXd dcVoltage 		=	Eigen::VectorXd::Zero(6);
+			Eigen::VectorXd systemStates = Eigen::VectorXd::Zero(12);
 
-					Eigen::VectorXd thrustersForce = Eigen::VectorXd::Zero(gControlOrder);
-					rpmToThrustForce(thrustersForce, controlInput);
-					thrustForceToEffort(gEfforts, thrustersForce);
-				}
-				else
-				{
-					for (int i = 0; i < gControlOrder; i++)
-						gEfforts[i] = 0.0;
-					errorControlInput = true;
-				}
+			// Calculates the forces and moments generated by the thrusters
+			pwmToDC(dcVoltage, controlInput);
+			dcToThrustForce(thrustersForce, dcVoltage);
+			thrustForceToEffort(gEfforts, thrustersForce);
 
-				// Performs iterations to calculate the new system's states
-				for (int ii=0; ii < gUWVParameters.simPerCycle; ii++)
-					calcStates(gSystemStates, gCurrentTime, gEfforts);
+			// Gets a vector with the current system states (pose and velocities)
+			getStates(systemStates);
 
-				// Updates the new system's states
-				updateStates(gSystemStates);
-			}
-			else
-				errorStatus = true;
+			// Performs iterations to calculate the new system's states
+			for (int i=0; i < gSimPerCycle ; i++)
+				calcStates(systemStates, gCurrentTime, gEfforts);
+
+			// Updates the new system's states
+			updateStates(systemStates);
+
+			return true;
 		}
+		else
+			return false;
 	}
 
-	void DynamicModel::sendEffortCommands(const base::samples::Joints &controlInput)
+	bool DynamicModel::sendRPMCommands(const base::samples::Joints &controlInput)
 	{
-		/**
-		 * If the flag errorStatus is set, this function won't be executed.
-		 * This garantee that the error message will be printed only once
-		 */
+		// Checks if the control input is valid
+		checkControlInput(controlInput, "speed");
+
+		// Checks if the RPM coefficients were properly set
+		checkRPMCoefficients();
+
+		// Checks if there is any error flag activated
+		checkErrors();
+
+		// Checks if there was any error in the library
 		if(!errorStatus)
 		{
-			// Checks if there is any error flag activated
-			if(checkErrors())
-			{
-				// Checks if the control input is valid
-				if(checkControlInput(controlInput, "effort"))
-				{
-					for (int i = 0; i < gSystemOrder; i++)
-						gEfforts[i] = controlInput[i].effort;
-				}
-				else
-				{
-					for (int i = 0; i < gSystemOrder; i++)
-						gEfforts[i] = 0.0;
-					errorControlInput = true;
-				}
+			Eigen::VectorXd thrustersForce = Eigen::VectorXd::Zero(gControlOrder);
+			Eigen::VectorXd systemStates = Eigen::VectorXd::Zero(12);
 
-				// Performs iterations to calculate the new system's states
-				for (int ii=0; ii < gUWVParameters.simPerCycle; ii++)
-					calcStates(gSystemStates, gCurrentTime, gEfforts);
+			// Calculates the forces and moments generated by the thrusters
+			rpmToThrustForce(thrustersForce, controlInput);
+			thrustForceToEffort(gEfforts, thrustersForce);
 
-				// Updates the new system's states
-				updateStates(gSystemStates);
-			}
-			else
-				errorStatus = true;
+			// Gets a vector with the current system states (pose and velocities)
+			getStates(systemStates);
+
+			// Performs iterations to calculate the new system's states
+			for (int ii=0; ii < gSimPerCycle; ii++)
+				calcStates(systemStates, gCurrentTime, gEfforts);
+
+			// Updates the new system's states
+			updateStates(systemStates);
+
+			return true;
 		}
+		else
+			return false;
+	}
+
+	bool DynamicModel::sendEffortCommands(const base::samples::Joints &controlInput)
+	{
+		// Checks if the control input is valid
+		checkControlInput(controlInput, "effort");
+
+		// Checks if there is any error flag activated
+		checkErrors();
+
+		// Checks if there was any error in the library
+		if(!errorStatus)
+		{
+			Eigen::VectorXd systemStates = Eigen::VectorXd::Zero(12);
+
+			// Puts the efforts in a vector
+			for (int i = 0; i < gSystemOrder/2; i++)
+				gEfforts[i] = controlInput[i].effort;
+
+			// Gets a vector with the current system states (pose and velocities)
+			getStates(systemStates);
+
+			// Performs iterations to calculate the new system's states
+			for (int ii=0; ii < gSimPerCycle; ii++)
+				calcStates(systemStates, gCurrentTime, gEfforts);
+
+			// Updates the new system's states
+			updateStates(systemStates);
+
+			return true;
+		}
+		else
+			return false;
 	}
 
 	void DynamicModel::calcAcceleration(Eigen::VectorXd &velocityAndAcceleration,
-			const Eigen::VectorXd &velocity,
-			const Eigen::VectorXd &controlInput)
+			const base::Vector6d &velocity,
+			const base::Vector6d &controlInput)
 	{
 		/**
 		 * velocityAndAcceleration:
@@ -251,12 +249,12 @@ namespace uwv_dynamic_model
 		 */
 
 		// Forces and Moments vectors
-		Eigen::VectorXd coriolisEffect		=	Eigen::VectorXd::Zero(6);
-		Eigen::VectorXd linDamping			=	Eigen::VectorXd::Zero(6);
-		Eigen::VectorXd quadDamping			=	Eigen::VectorXd::Zero(6);
-		Eigen::VectorXd gravityBuoyancy		=	Eigen::VectorXd::Zero(6);
-		Eigen::VectorXd acceleration		=	Eigen::VectorXd::Zero(6);
-		base::Matrix6d invInertiaMatrix = Eigen::MatrixXd::Zero(6,6);
+		base::Matrix6d invInertiaMatrix 	= 	Eigen::MatrixXd::Zero(6,6);
+		base::Vector6d coriolisEffect		=	Eigen::VectorXd::Zero(6);
+		base::Vector6d linDamping			=	Eigen::VectorXd::Zero(6);
+		base::Vector6d quadDamping			=	Eigen::VectorXd::Zero(6);
+		base::Vector6d gravityBuoyancy		=	Eigen::VectorXd::Zero(6);
+		base::Vector6d acceleration			=	Eigen::VectorXd::Zero(6);
 
 		// Calculating the efforts for each one of the hydrodynamics effects
 		calcInvInertiaMatrix(invInertiaMatrix, velocity);
@@ -282,7 +280,338 @@ namespace uwv_dynamic_model
 			gLinearAcceleration[i]  = acceleration[i];
 			gAngularAcceleration[i] = acceleration[i+3];
 		}
+	}
 
+	bool DynamicModel::setUWVParameters(const uwv_dynamic_model::Parameters &uwvParameters)
+	{
+		// Checks if there is any parameter inconsistency
+		checkParameters(uwvParameters);
+
+		// Checks if there is any error flag activated
+		checkErrors();
+
+		// Checks if the model was already initialized
+		if(!errorModelInit)
+		{
+			if(!errorStatus)
+			{
+				setInertiaMatrix(uwvParameters.inertiaMatrixPos,
+						uwvParameters.inertiaMatrixNeg);
+				setCoriolisMatrix(uwvParameters.coriolisMatrixPos,
+						uwvParameters.coriolisMatrixNeg);
+				setLinDampingMatrix(uwvParameters.linDampMatrixPos,
+						uwvParameters.linDampMatrixPos);
+				setQuadDampingMatrix(uwvParameters.quadDampMatrixPos,
+						uwvParameters.quadDampMatrixNeg);
+
+				gThrustConfigMatrix 	= uwvParameters.thrustConfigMatrix;
+
+				gThrusterCoeffPWM 		= uwvParameters.thrusterCoeffPWM;
+				gLinThrusterCoeffPWM 	= uwvParameters.linThrusterCoeffPWM;
+				gQuadThrusterCoeffPWM 	= uwvParameters.quadThrusterCoeffPWM;
+
+				gThrusterCoeffRPM 		= uwvParameters.thrusterCoeffRPM;
+				gThrusterVoltage 		= uwvParameters.thrusterVoltage;
+
+				gWeight	  = uwvParameters.uwvMass*uwvParameters.gravity;
+				gBuoyancy =	uwvParameters.waterDensity*uwvParameters.gravity*
+						uwvParameters.uwvVolume;
+
+				gCenterOfGravity  	= uwvParameters.centerOfGravity;
+				gCenterOfBuoyancy 	= uwvParameters.centerOfBuoyancy;
+
+				gUWVFloat 		  	= uwvParameters.uwvFloat;
+				gUWVMass 			= uwvParameters.uwvMass;
+				gUWVVolume 			= uwvParameters.uwvVolume;
+				gGravity 			= uwvParameters.gravity;
+				gWaterDensity		= uwvParameters.waterDensity;
+				gSimPerCycle		= uwvParameters.simPerCycle;
+				return true;
+			}
+			else
+				return false;
+		}
+		else
+		{
+			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
+					" The model wasn't initialized yet. Use the function"
+					" initParameters first to set the model parameters,"
+					" and then, if you want to modify any of them, use the"
+					" function setUWVParameters.\x1b[0m\n\n");
+			return false;
+		}
+	}
+
+	void DynamicModel::resetStates()
+	{
+		Eigen::Vector3d resetVector3d = Eigen::VectorXd::Zero(3);
+
+		gPosition 			= resetVector3d;
+		gEulerOrientation 	= resetVector3d;
+		gLinearVelocity 	= resetVector3d;
+		gAngularVelocity 	= resetVector3d;
+	}
+
+	void DynamicModel::getUWVParameters(uwv_dynamic_model::Parameters &uwvParameters)
+	{
+		uwvParameters.inertiaMatrixPos 		= gInertiaMatrixPos;
+		uwvParameters.inertiaMatrixNeg 		= gInertiaMatrixNeg;
+		uwvParameters.coriolisMatrixPos 	= gCoriolisMatrixPos;
+		uwvParameters.coriolisMatrixNeg 	= gCoriolisMatrixNeg;
+		uwvParameters.linDampMatrixPos 		= gLinDampMatrixPos;
+		uwvParameters.linDampMatrixNeg	 	= gLinDampMatrixNeg;
+		uwvParameters.quadDampMatrixPos 	= gQuadDampMatrixPos;
+		uwvParameters.quadDampMatrixNeg 	= gQuadDampMatrixNeg;
+		uwvParameters.thrustConfigMatrix 	= gThrustConfigMatrix;
+
+		uwvParameters.thrusterCoeffPWM 		= gThrusterCoeffPWM;
+		uwvParameters.linThrusterCoeffPWM 	= gLinThrusterCoeffPWM;
+		uwvParameters.quadThrusterCoeffPWM 	= gQuadThrusterCoeffPWM;
+		uwvParameters.thrusterCoeffRPM 		= gThrusterCoeffRPM;
+		uwvParameters.thrusterVoltage 		= gThrusterVoltage;
+
+		uwvParameters.centerOfGravity 		= gCenterOfGravity;
+		uwvParameters.centerOfBuoyancy 		= gCenterOfBuoyancy;
+		uwvParameters.uwvFloat 				= gUWVFloat;
+		uwvParameters.uwvMass 				= gUWVMass;
+		uwvParameters.uwvVolume 			= gUWVVolume;
+		uwvParameters.gravity 				= gGravity;
+		uwvParameters.waterDensity 			= gWaterDensity;
+		uwvParameters.simPerCycle			= gSimPerCycle;
+
+		uwvParameters.controlOrder			= gControlOrder;
+		uwvParameters.samplingTime			= gSamplingTime;
+	}
+
+	void DynamicModel::getPosition(base::Position &position)
+	{
+		position = gPosition;
+	}
+
+	void DynamicModel::getEulerOrientation(Eigen::Vector3d &eulerOrientation)
+	{
+		eulerOrientation = gEulerOrientation;
+	}
+
+	void DynamicModel::getQuatOrienration(base::Orientation &quatOrientation)
+	{
+		eulerToQuaternion(quatOrientation, gEulerOrientation);
+	}
+
+	void DynamicModel::getLinearVelocity(base::Vector3d &linearVelocity)
+	{
+		linearVelocity = gLinearVelocity;
+	}
+
+	void DynamicModel::getAngularVelocity(base::Vector3d &angularVelocity)
+	{
+		angularVelocity = gAngularVelocity;
+	}
+
+	void DynamicModel::getLinearAcceleration(base::Vector3d &linearAcceleration)
+	{
+		linearAcceleration = gLinearAcceleration;
+	}
+
+	void DynamicModel::getAngularAcceleration(base::Vector3d &angularAcceleration)
+	{
+		angularAcceleration = gAngularAcceleration;
+	}
+
+	void DynamicModel::getStates(Eigen::VectorXd &systemStates)
+	{
+		systemStates.segment(0,3) = gPosition;
+		systemStates.segment(3,3) = gEulerOrientation;
+		systemStates.segment(6,3) = gLinearVelocity;
+		systemStates.segment(9,3) = gAngularVelocity;
+	}
+
+	void DynamicModel::getEfforts(base::Vector6d &efforts)
+	{
+		efforts = gEfforts;
+	}
+
+	void DynamicModel::getSimulationTime(double &simulationTime)
+	{		
+		simulationTime = gCurrentTime;
+	}
+
+	void DynamicModel::getSamplingTime(double &samplingTime)
+	{
+		samplingTime = gSamplingTime;
+	}
+
+	void DynamicModel::getSimPerCycle(int &simPerCycle)
+	{
+		simPerCycle = gSimPerCycle;
+	}
+
+	void DynamicModel::eulerToQuaternion(base::Quaterniond &quaternion,
+									     const Eigen::Vector3d &eulerAngles)
+	{
+
+		quaternion.w() = ( cos(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) +
+						 ( sin(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
+		quaternion.x() = ( sin(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) -
+						 ( cos(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
+		quaternion.y() = ( cos(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) +
+						 ( sin(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
+		quaternion.z() = ( cos(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*sin(eulerAngles(2)/2) ) -
+						 ( sin(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*cos(eulerAngles(2)/2) );
+	}
+
+	void DynamicModel::calcInvInertiaMatrix(base::Matrix6d &invInertiaMatrix,
+			 	 	 	 	 	 	 	    const base::Vector6d &velocity)
+	{	
+		Eigen::MatrixXd inertiaMatrix = Eigen::MatrixXd::Zero(6,6);
+		for(int i = 0; i < 6; i++)
+		{
+			if(velocity(i) > -0.001)
+				inertiaMatrix.block(0 , i , 6, 1) = gInertiaMatrixPos.block(0 , i , 6, 1);
+			else
+				inertiaMatrix.block(0 , i , 6, 1) = gInertiaMatrixNeg.block(0 , i , 6, 1);
+		}
+
+		invInertiaMatrix = inertiaMatrix.inverse();
+	}
+
+	void DynamicModel::calcCoriolisEffect(base::Vector6d &coriolisEffect,
+										  const base::Vector6d &velocity)
+	{
+		Eigen::MatrixXd coriolisMatrix = Eigen::MatrixXd::Zero(6,6);
+
+		for(int i = 0; i < 6; i++)
+		{
+			if(velocity(i) > -0.001)
+				coriolisMatrix.block(0 , i , 6, 1) = gCoriolisMatrixPos.block(0 , i , 6, 1);
+			else
+				coriolisMatrix.block(0 , i , 6, 1) = gCoriolisMatrixNeg.block(0 , i , 6, 1);
+		}
+		coriolisEffect = coriolisMatrix*velocity;
+	}
+
+	void DynamicModel::calcLinDamping(base::Vector6d &linDamping,
+									  const base::Vector6d &velocity)
+	{
+		Eigen::MatrixXd linDampMatrix = Eigen::MatrixXd::Zero(6,6);
+
+		for(int i = 0; i < 6; i++)
+		{
+
+			if(velocity(i) > -0.001)
+				linDampMatrix.block(0 , i , 6, 1) = gLinDampMatrixPos.block(0, i , 6, 1);
+			else
+				linDampMatrix.block(0 , i , 6, 1) = gLinDampMatrixNeg.block(0 , i , 6, 1);
+
+		}
+		linDamping = linDampMatrix*velocity;
+	}
+
+	void DynamicModel::calcQuadDamping(base::Vector6d &quadDamping,
+									   const base::Vector6d &velocity)
+	{
+		Eigen::MatrixXd quadDampMatrix = Eigen::MatrixXd::Zero(6,6);
+		Eigen::VectorXd absoluteVelocity = Eigen::VectorXd::Zero(6);
+
+		for(int i = 0; i < 6; i++)
+		{
+			if(velocity(i) > -0.001)
+				quadDampMatrix.block(0 , i , 6, 1) = gQuadDampMatrixPos.block(0, i , 6, 1);
+			else
+				quadDampMatrix.block(0 , i , 6, 1) = gQuadDampMatrixNeg.block(0 , i , 6, 1);
+
+			absoluteVelocity[i] = fabs(velocity[i]);
+		}
+
+		quadDamping = quadDampMatrix*absoluteVelocity.asDiagonal()*velocity;
+	}
+
+	void DynamicModel::calcGravityBuoyancy(base::Vector6d &gravitybuoyancy,
+										   const Eigen::Vector3d &eulerOrientation)
+	{
+		float e1 = eulerOrientation(0);
+		float e2 = eulerOrientation(1);
+		float xg = gCenterOfGravity(0);
+		float yg = gCenterOfGravity(1);
+		float zg = gCenterOfGravity(2);
+		float xb = gCenterOfBuoyancy(0);
+		float yb = gCenterOfBuoyancy(1);
+		float zb = gCenterOfBuoyancy(2);
+
+		if (gUWVFloat == true)
+			gWeight = gBuoyancy;
+
+		gravitybuoyancy(0) 	= 	(gWeight - gBuoyancy) * sin(e2);
+		gravitybuoyancy(1) 	=  -(gWeight - gBuoyancy) * (cos(e2)*sin(e1));
+		gravitybuoyancy(2) 	=  -(gWeight - gBuoyancy) * (cos(e2)*cos(e1));
+		gravitybuoyancy(3) 	=  -((yg*gWeight - yb*gWeight)*cos(e2)*cos(e1)) +
+								((zg*gWeight - zb*gBuoyancy) * cos(e2)*sin(e1));
+		gravitybuoyancy(4) 	=   ((zg*gWeight - zb*gWeight)*sin(e2)) +
+								((xg*gWeight - xb*gBuoyancy)*cos(e2)*cos(e1));
+		gravitybuoyancy(5) 	=  -((xg*gWeight - xb*gWeight)*cos(e2)*sin(e1)) -
+								((yg*gWeight - yb*gBuoyancy)* sin(e2));
+
+	}
+
+	void DynamicModel::pwmToDC(Eigen::VectorXd &dcVolt,
+							   const base::samples::Joints &controlInput)
+	{	
+		for ( int i = 0; i < gControlOrder; i ++)
+			dcVolt[i] = gThrusterVoltage * controlInput[i].raw;
+	}			
+
+	void DynamicModel::dcToThrustForce(Eigen::VectorXd &thrustForces,
+									   const Eigen::VectorXd &dcVolt)
+	{
+		for ( int i = 0; i < gControlOrder; i ++)
+		{
+			float factor = 0.01;
+
+			if ((dcVolt[i] >= -factor) && ( dcVolt[i] <= factor ))
+				thrustForces[i] = 0.0;
+			else
+			{
+				double thruster_coefficient;
+				if(dcVolt[i] > 0)
+					thruster_coefficient = gThrusterCoeffPWM.positive
+					+ gLinThrusterCoeffPWM.positive*dcVolt[i]
+					                                       + gQuadThrusterCoeffPWM.positive*dcVolt[i]*fabs(dcVolt[i]);
+				else
+					thruster_coefficient = gThrusterCoeffPWM.negative
+					+ gLinThrusterCoeffPWM.negative*dcVolt[i]
+					                                       + gQuadThrusterCoeffPWM.negative*dcVolt[i]*fabs(dcVolt[i]);
+
+				thrustForces[i] = thruster_coefficient*fabs(dcVolt[i])*dcVolt[i];
+			}
+		}
+	}
+	
+	void DynamicModel::rpmToThrustForce(Eigen::VectorXd &thrustForces,
+									    const base::samples::Joints &controlInput)
+	{
+		for (int i = 0; i < gControlOrder; i++)
+		{
+			if(controlInput[i].speed > -0.001)
+				thrustForces[i] = gThrusterCoeffRPM.positive *
+				(fabs(controlInput[i].speed) * controlInput[i].speed);
+			else
+				thrustForces[i] = gThrusterCoeffRPM.negative *
+				(fabs(controlInput[i].speed) * controlInput[i].speed);
+		}
+	}
+
+	void DynamicModel::thrustForceToEffort(base::Vector6d &forcesAndMoments,
+										   const Eigen::VectorXd &thrustInput)
+	{
+		forcesAndMoments = gThrustConfigMatrix*thrustInput;
+	}
+
+	void DynamicModel::updateStates(Eigen::VectorXd &newSystemStates)
+	{
+		gPosition 			= newSystemStates.segment(0,3);
+		gEulerOrientation 	= newSystemStates.segment(3,3);
+		gLinearVelocity 	= newSystemStates.segment(6,3);
+		gAngularVelocity 	= newSystemStates.segment(9,3);
 	}
 
 	void DynamicModel::setInertiaMatrix(const base::Matrix6d &inertiaMatrixPos,
@@ -321,317 +650,7 @@ namespace uwv_dynamic_model
 		checkNegativeMatrices(gQuadDampMatrixNeg, gQuadDampMatrixPos);
 	}
 
-	void DynamicModel::setThrustConfigMatrix(const Eigen::MatrixXd &thrustConfigMatrix)
-	{
-		if (thrustConfigMatrix.rows() == 6)
-			gThrustConfigMatrix = thrustConfigMatrix;
-	}
-
-	void DynamicModel::setPosition(const Eigen::Vector3d &position)
-	{
-		gPosition = position;
-	}
-
-	void DynamicModel::setEulerOrientation(const Eigen::Vector3d &eulerOrientation)
-	{
-		gEulerOrientation = eulerOrientation;
-		Eigen::Quaterniond quatOrientation;
-		eulerToQuaternion(quatOrientation, eulerOrientation);
-		gQuatOrientation = quatOrientation;
-	}
-
-	void DynamicModel::setQuatOrientation(const Eigen::Quaterniond &quatOrientation)
-	{
-		gQuatOrientation = quatOrientation;
-		Eigen::Vector3d eulerOrientation;
-		eulerOrientation = base::getEuler(quatOrientation);
-		gEulerOrientation = eulerOrientation;
-	}
-
-	void DynamicModel::setLinearVelocity(const Eigen::Vector3d &linearVelocity)
-	{
-		gLinearVelocity = linearVelocity;
-	}
-
-	void DynamicModel::setAngularVelocity(const Eigen::Vector3d &angularVelocity)
-	{
-		gAngularVelocity = angularVelocity;
-	}
-
-	void DynamicModel::resetAll()
-	{
-		Eigen::Vector3d resetVector3d = Eigen::VectorXd::Zero(3);
-		Eigen::Quaterniond resetQuaterniond;
-		eulerToQuaternion(resetQuaterniond, resetVector3d);
-
-		setPosition(resetVector3d);
-		setEulerOrientation(resetVector3d);
-		setQuatOrientation(resetQuaterniond);
-		setLinearVelocity(resetVector3d);
-		setAngularVelocity(resetVector3d);
-	}
-
-	void DynamicModel::getUWVParameters(uwv_dynamic_model::Parameters &uwvParameters)
-	{
-		uwvParameters = gUWVParameters;
-	}
-
-	void DynamicModel::getPosition(base::Position &position)
-	{
-		position = gPosition;
-	}
-
-	void DynamicModel::getEulerOrientation(base::Vector3d &eulerOrientation)
-	{
-		eulerOrientation = gEulerOrientation;
-	}
-
-	void DynamicModel::getQuatOrienration(base::Quaterniond &quatOrientation)
-	{
-		quatOrientation = gQuatOrientation;
-	}
-
-	void DynamicModel::getLinearVelocity(base::Vector3d &linearVelocity)
-	{
-		linearVelocity = gLinearVelocity;
-	}
-
-	void DynamicModel::getAngularVelocity(base::Vector3d &angularVelocity)
-	{
-		angularVelocity = gAngularVelocity;
-	}
-
-	void DynamicModel::getLinearAcceleration(base::Vector3d &linearAcceleration)
-	{
-		linearAcceleration = gLinearAcceleration;
-	}
-
-	void DynamicModel::getAngularAcceleration(base::Vector3d &angularAcceleration)
-	{
-		angularAcceleration = gAngularAcceleration;
-	}
-
-	void DynamicModel::getSimulationTime(double &simulationTime)
-	{		
-		simulationTime = gCurrentTime;
-	}
-
-	void DynamicModel::eulerToQuaternion(Eigen::Quaterniond &quaternion,
-									     const Eigen::Vector3d &eulerAngles)
-	{
-
-		quaternion.w() = ( cos(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) +
-						 ( sin(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
-		quaternion.x() = ( sin(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) -
-						 ( cos(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
-		quaternion.y() = ( cos(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) +
-						 ( sin(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
-		quaternion.z() = ( cos(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*sin(eulerAngles(2)/2) ) -
-						 ( sin(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*cos(eulerAngles(2)/2) );
-	}
-
-	void DynamicModel::calcInvInertiaMatrix(base::Matrix6d &invInertiaMatrix,
-			 	 	 	 	 	 	 	    const Eigen::VectorXd &velocity)
-	{	
-		Eigen::MatrixXd inertiaMatrix = Eigen::MatrixXd::Zero(6,6);
-		for(int i = 0; i < 6; i++)
-		{
-			if(velocity(i) > -0.001)
-				inertiaMatrix.block(0 , i , 6, 1) = gInertiaMatrixPos.block(0 , i , 6, 1);
-			else
-				inertiaMatrix.block(0 , i , 6, 1) = gInertiaMatrixNeg.block(0 , i , 6, 1);
-		}
-
-		invInertiaMatrix = inertiaMatrix.inverse();
-	}
-
-	void DynamicModel::calcCoriolisEffect(Eigen::VectorXd &coriolisEffect,
-										  const Eigen::VectorXd &velocity)
-	{
-		Eigen::MatrixXd coriolisMatrix = Eigen::MatrixXd::Zero(6,6);
-
-		for(int i = 0; i < 6; i++)
-		{
-			if(velocity(i) > -0.001)
-				coriolisMatrix.block(0 , i , 6, 1) = gCoriolisMatrixPos.block(0 , i , 6, 1);
-			else
-				coriolisMatrix.block(0 , i , 6, 1) = gCoriolisMatrixNeg.block(0 , i , 6, 1);
-		}
-		coriolisEffect = coriolisMatrix*velocity;
-	}
-
-	void DynamicModel::calcLinDamping(Eigen::VectorXd &linDamping,
-									  const Eigen::VectorXd &velocity)
-	{
-		Eigen::MatrixXd linDampMatrix = Eigen::MatrixXd::Zero(6,6);
-
-		for(int i = 0; i < 6; i++)
-		{
-
-			if(velocity(i) > -0.001)
-				linDampMatrix.block(0 , i , 6, 1) = gLinDampMatrixPos.block(0, i , 6, 1);
-			else
-				linDampMatrix.block(0 , i , 6, 1) = gLinDampMatrixNeg.block(0 , i , 6, 1);
-
-		}
-		linDamping = linDampMatrix*velocity;
-	}
-
-	void DynamicModel::calcQuadDamping(Eigen::VectorXd &quadDamping,
-									   const Eigen::VectorXd &velocity)
-	{
-		Eigen::MatrixXd quadDampMatrix = Eigen::MatrixXd::Zero(6,6);
-		Eigen::VectorXd absoluteVelocity = Eigen::VectorXd::Zero(6);
-
-		for(int i = 0; i < 6; i++)
-		{
-			if(velocity(i) > -0.001)
-				quadDampMatrix.block(0 , i , 6, 1) = gQuadDampMatrixPos.block(0, i , 6, 1);
-			else
-				quadDampMatrix.block(0 , i , 6, 1) = gQuadDampMatrixNeg.block(0 , i , 6, 1);
-
-			absoluteVelocity[i] = fabs(velocity[i]);
-		}
-
-		quadDamping = quadDampMatrix*absoluteVelocity.asDiagonal()*velocity;
-	}
-
-	void DynamicModel::calcGravityBuoyancy(Eigen::VectorXd &gravitybuoyancy,
-										   const Eigen::Vector3d &eulerOrientation)
-	{
-		float e1 = eulerOrientation(0);
-		float e2 = eulerOrientation(1);
-		float e3 = eulerOrientation(2);
-		float xg = gUWVParameters.centerOfGravity(0);
-		float yg = gUWVParameters.centerOfGravity(1);
-		float zg = gUWVParameters.centerOfGravity(2);
-		float xb = gUWVParameters.centerOfBuoyancy(0);
-		float yb = gUWVParameters.centerOfBuoyancy(1);
-		float zb = gUWVParameters.centerOfBuoyancy(2);
-
-		if (gUWVParameters.uwvFloat == true)
-			gWeight = gBuoyancy;
-
-		gravitybuoyancy(0) 	= 	(gWeight - gBuoyancy) * sin(e2);
-		gravitybuoyancy(1) 	=  -(gWeight - gBuoyancy) * (cos(e2)*sin(e1));
-		gravitybuoyancy(2) 	=  -(gWeight - gBuoyancy) * (cos(e2)*cos(e1));
-		gravitybuoyancy(3) 	=  -((yg*gWeight - yb*gWeight)*cos(e2)*cos(e1)) +
-								((zg*gWeight - zb*gBuoyancy) * cos(e2)*sin(e1));
-		gravitybuoyancy(4) 	=   ((zg*gWeight - zb*gWeight)*sin(e2)) +
-								((xg*gWeight - xb*gBuoyancy)*cos(e2)*cos(e1));
-		gravitybuoyancy(5) 	=  -((xg*gWeight - xb*gWeight)*cos(e2)*sin(e1)) -
-								((yg*gWeight - yb*gBuoyancy)* sin(e2));
-
-	}
-
-	void DynamicModel::calcGravityBuoyancy(Eigen::VectorXd &gravitybuoyancy,
-										   const Eigen::Quaterniond &quatOrientation)
-	{
-		float e1 = quatOrientation.x();
-		float e2 = quatOrientation.y();
-		float e3 = quatOrientation.z();
-		float e4 = quatOrientation.w();
-		float xg = gUWVParameters.centerOfGravity(0);
-		float yg = gUWVParameters.centerOfGravity(1);
-		float zg = gUWVParameters.centerOfGravity(2);
-		float xb = gUWVParameters.centerOfBuoyancy(0);
-		float yb = gUWVParameters.centerOfBuoyancy(1);
-		float zb = gUWVParameters.centerOfBuoyancy(2);
-
-		if (gUWVParameters.uwvFloat == true)
-			gWeight = gBuoyancy;
-
-		gravitybuoyancy(0) 	=	(2*((e4*e2)-(e1*e3)))*(gWeight-gBuoyancy);
-		gravitybuoyancy(1) 	=  -(2*((e4*e1)+(e2*e3)))*(gWeight-gBuoyancy);
-		gravitybuoyancy(2) 	=   (-pow(e4,2)+pow(e1,2)+pow(e2,2)-pow(e3,2))*
-								(gWeight-gBuoyancy);
-		gravitybuoyancy(3) 	= 	((-pow(e4,2)+pow(e1,2)+pow(e2,2)-pow(e3,2))*
-								((yg*gWeight)-(yb*gBuoyancy)))+(2*((e4*e1)+(e2*e3))*
-								((zg*gWeight)-(zb*gBuoyancy)));
-		gravitybuoyancy(4) 	=  -((-pow(e4,2)+pow(e1,2)+pow(e2,2)-pow(e3,2))*
-								((xg*gWeight)-(xb*gBuoyancy)))+(2*((e4*e2)-(e1*e3))*
-								((zg*gWeight)-(zb*gBuoyancy)));
-		gravitybuoyancy(5) 	=  -(2*((e4*e1)+(e2*e3))*((xg*gWeight)-(xb*gBuoyancy)))-
-								(2*((e4*e2)-(e1*e3))*((yg*gWeight)-(yb*gBuoyancy)));
-	}
-
-	void DynamicModel::pwmToDC(Eigen::VectorXd &dcVolt,
-							   const base::samples::Joints &controlInput)
-	{	
-		for ( int i = 0; i < gControlOrder; i ++)
-			dcVolt[i] = gUWVParameters.thrusterVoltage * controlInput[i].raw;
-	}			
-
-	void DynamicModel::dcToThrustForce(Eigen::VectorXd &thrustForces,
-									   const Eigen::VectorXd &dcVolt)
-	{
-		if(checkPWMCoefficients())
-		{
-			for ( int i = 0; i < gControlOrder; i ++)
-			{
-				float factor = 0.01;
-
-				if ((dcVolt[i] >= -factor) && ( dcVolt[i] <= factor ))
-					thrustForces[i] = 0.0;
-				else
-				{
-					double thruster_coefficient;
-					if(dcVolt[i] > 0)
-						thruster_coefficient = gThrusterCoeffPWM.positive
-						+ gLinThrusterCoeffPWM.positive*dcVolt[i]
-					    + gQuadThrusterCoeffPWM.positive*dcVolt[i]*fabs(dcVolt[i]);
-					else
-						thruster_coefficient = gThrusterCoeffPWM.negative
-						+ gLinThrusterCoeffPWM.negative*dcVolt[i]
-						+ gQuadThrusterCoeffPWM.negative*dcVolt[i]*fabs(dcVolt[i]);
-
-					thrustForces[i] = thruster_coefficient*fabs(dcVolt[i])*dcVolt[i];
-				}
-			}
-		}
-	}
-	
-	void DynamicModel::rpmToThrustForce(Eigen::VectorXd &thrustForces,
-									    const base::samples::Joints &controlInput)
-	{
-		if(checkRPMCoefficients())
-		{
-			for (int i = 0; i < gControlOrder; i++)
-			{
-				if(controlInput[i].speed > -0.001)
-					thrustForces[i] = gUWVParameters.thrusterCoeffRPM.positive *
-					(fabs(controlInput[i].speed) * controlInput[i].speed);
-				else
-					thrustForces[i] = gUWVParameters.thrusterCoeffRPM.negative *
-					(fabs(controlInput[i].speed) * controlInput[i].speed);
-			}
-		}
-	}
-
-	void DynamicModel::thrustForceToEffort(Eigen::VectorXd &forcesAndMoments,
-										   const Eigen::VectorXd &thrustInput)
-	{
-		forcesAndMoments = gThrustConfigMatrix*thrustInput;
-	}
-	void DynamicModel::updateStates(Eigen::VectorXd &newSystemStates)
-	{
-		base::Vector3d position 		= newSystemStates.head(3);
-		base::Vector3d eulerOrientation = newSystemStates.segment(3,3);
-		base::Vector3d linearVelocity 	= newSystemStates.segment(6,3);
-		base::Vector3d angularVelocity 	= newSystemStates.segment(9,3);
-
-		Eigen::Quaterniond quatOrientation;
-		eulerToQuaternion(quatOrientation, eulerOrientation);
-
-		setPosition(position);
-		setEulerOrientation(eulerOrientation);
-		setLinearVelocity(linearVelocity);
-		setAngularVelocity(angularVelocity);
-
-		gSystemStates = newSystemStates;
-	}
-
-	bool DynamicModel::checkConstruction(double &samplingTime, uint &simPerCycle,
+	void DynamicModel::checkConstruction(double &samplingTime, uint &simPerCycle,
 			   	   	   	   	   	   	   	 double &initialTime)
 	{
 		std::string textElement;
@@ -660,38 +679,146 @@ namespace uwv_dynamic_model
 		if(checkError)
 		{
 			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-					  " The %s should be %s to zero.\x1b[0m\n\n"
+					  " The %s should be %s zero.\x1b[0m\n\n"
 					  , textElement.c_str(), textComparison.c_str());
-			return false;
+			errorConstruction = true;
 		}
-		return true;
 	}
 
-	bool DynamicModel::checkInitialization(base::Matrix6d &inertiaMatrixPos,
-										   base::Matrix6d &inertiaMatrixNeg)
+	void DynamicModel::checkParameters(const uwv_dynamic_model::Parameters &pwvParameters)
 	{
 		std::string textElement;
 		bool checkError = false;
 
-		if(inertiaMatrixPos.determinant() == 0)
+		errorSetParameters = false;
+
+		// Checking if the inertia matrices are invertible
+		if(pwvParameters.inertiaMatrixPos.determinant() == 0)
 		{
 			textElement = "positive";
 			checkError = true;
 		}
-		else if(inertiaMatrixNeg.determinant() == 0)
+		else if(pwvParameters.inertiaMatrixNeg != Eigen::MatrixXd::Zero(6,6) &&
+				pwvParameters.inertiaMatrixNeg.determinant() == 0)
 		{
 			textElement = "negative";
 			checkError = true;
 		}
 
-		if(checkError)
+		if(checkError && !errorSetParameters)
 		{
 			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
 					  " The %s inertia matrix is not invertible.\x1b[0m\n\n",
 					  textElement.c_str());
-			return false;
+			errorSetParameters = true;
 		}
-		return true;
+
+		// Checking if the thrust configuration matrix has a coherent size
+
+		if (pwvParameters.thrustConfigMatrix.rows() != 6 && !errorSetParameters)
+		{
+			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
+						" The thruster configuration matrix should have 6"
+						" rows, in order to be equal to the number of degrees"
+						" of freedom. The provided matrix has %i rows.\x1b[0m\n\n"
+						, pwvParameters.thrustConfigMatrix.rows());
+
+			errorSetParameters = true;
+		}
+		else if(pwvParameters.thrustConfigMatrix.cols() != gControlOrder
+				&& !errorSetParameters)
+		{
+			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
+								" The thruster configuration matrix should have %i"
+								" columns, in order to be equal to the number of control"
+								" inputs. The provided matrix has %i columns.\x1b[0m\n\n"
+								, gControlOrder, pwvParameters.thrustConfigMatrix.cols());
+			errorSetParameters = true;
+		}
+
+		// Checking if other parameters were properly set (no negative values)
+
+		checkError = false;
+
+		if(pwvParameters.uwvMass < 0)
+		{
+			textElement = "uwvMass";
+			checkError = true;
+		}
+		else if(pwvParameters.uwvVolume < 0)
+		{
+			textElement = "uwvVolume";
+			checkError = true;
+		}
+		else if(pwvParameters.waterDensity < 0)
+		{
+			textElement = "waterDensity";
+			checkError = true;
+		}
+		else if(pwvParameters.gravity < 0)
+		{
+			textElement = "gravity";
+			checkError = true;
+		}
+		else if(pwvParameters.thrusterVoltage < 0)
+		{
+			textElement = "thrusterVoltage";
+			checkError = true;
+		}
+		else if(pwvParameters.thrusterCoeffPWM.positive < 0)
+		{
+			textElement = "thrusterCoeffPWM.positive";
+			checkError = true;
+		}
+		else if(pwvParameters.thrusterCoeffPWM.negative < 0)
+		{
+			textElement = "thrusterCoeffPWM.negative";
+			checkError = true;
+		}
+		else if(pwvParameters.linThrusterCoeffPWM.positive < 0)
+		{
+			textElement = "linThrusterCoeffPWM.positive";
+			checkError = true;
+		}
+		else if(pwvParameters.linThrusterCoeffPWM.negative < 0)
+		{
+			textElement = "linThrusterCoeffPWM.negative";
+			checkError = true;
+		}
+		else if(pwvParameters.quadThrusterCoeffPWM.positive < 0)
+		{
+			textElement = "quadThrusterCoeffPWM.positive";
+			checkError = true;
+		}
+		else if(pwvParameters.quadThrusterCoeffPWM.negative < 0)
+		{
+			textElement = "quadThrusterCoeffPWM.negative";
+			checkError = true;
+		}
+		else if(pwvParameters.thrusterCoeffRPM.positive < 0)
+		{
+			textElement = "thrusterCoeffRPM.positive";
+			checkError = true;
+		}
+		else if(pwvParameters.thrusterCoeffRPM.negative < 0)
+		{
+			textElement = "thrusterCoeffRPM.negative";
+			checkError = true;
+		}
+		else if(pwvParameters.simPerCycle == 0)
+		{
+			textElement = "simPerCycle";
+			checkError = true;
+		}
+
+		if(checkError && !errorSetParameters)
+		{
+			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
+					  " The %s should be a positive value. If this parameter"
+					  " is irrelevant for your purpose, just make it null."
+					  "\x1b[0m\n\n", textElement.c_str());
+			errorSetParameters = true;
+		}
 	}
 
 	void DynamicModel::checkPositiveMatrices(void)
@@ -719,6 +846,7 @@ namespace uwv_dynamic_model
 		{
 			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
 					" The %s was not set.\x1b[0m\n\n", textElement.c_str());
+			errorStatus = true;
 		}
 	}
 
@@ -729,170 +857,220 @@ namespace uwv_dynamic_model
 			negativeMatrix = positiveMatrix;
 	}
 
-	bool DynamicModel::checkControlInput(const base::samples::Joints &controlInput,
+	void DynamicModel::checkControlInput(const base::samples::Joints &controlInput,
 										 std::string jointsElement)
 	{
 		int inputSize = controlInput.size();
 		std::string textElement;
-		std::string textPosition;
 		bool checkError = false;
 
-		if (inputSize != gControlOrder)
+		// Checking controlInput size
+		if(!errorStatus)
 		{
-			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-				  " The system has %i control inputs, and not %i like it was"
-				  " provided by the controlInput argument.\x1b[0m\n\n"
-					, gControlOrder, inputSize);
-			return false;
-		}
-		else if(jointsElement == "raw")
-		{
-			for (uint i = 0; i < controlInput.size(); i++)
+			if(jointsElement == "effort")
 			{
-				if(isnan(controlInput.elements[i].hasRaw()))
+				if (inputSize != 6)
 				{
-					textElement = jointsElement;
-					textPosition = i;
-					checkError = true;
-					break;
+					LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
+							" The controlInput should have 6 elements, one for each"
+							" degree of freedom. Currently, it has %i elements."
+							" \x1b[0m\n\n", inputSize);
+					errorControlInput = true;
 				}
 			}
-		}
-		else if(jointsElement == "speed")
-		{
-			for (uint i = 0; i < controlInput.size(); i++)
+			else
 			{
-				if(isnan(controlInput.elements[i].hasSpeed()))
+				if (inputSize != gControlOrder)
 				{
-					textElement = jointsElement;
-					textPosition = i;
-					checkError = true;
-					break;
-				}
-			}
-		}
-		else if(jointsElement == "effort")
-		{
-			for (uint i = 0; i < controlInput.size(); i++)
-			{
-				if(isnan(controlInput.elements[i].hasEffort()))
-				{
-					textElement = jointsElement;
-					textPosition = i;
-					checkError = true;
-					break;
+					LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
+							" The system has %i control inputs, and not %i like it was"
+							" provided by the controlInput argument.\x1b[0m\n\n"
+							, gControlOrder, inputSize);
+					errorControlInput = true;
 				}
 			}
 		}
 
-		if(checkError)
+		// Checking if the proper field is set
+		if(!errorControlInput && !errorStatus)
 		{
-			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-				" The control input hasn't its %s element set"
-				" at position %i.\x1b[0m\n\n", textElement.c_str(),
-				textPosition.c_str());
-			return false;
+			if(jointsElement == "effort")
+			{
+				for (uint i = 0; i < controlInput.size(); i++)
+				{
+					if(!controlInput.elements[i].hasEffort())
+					{
+						textElement = jointsElement;
+						checkError = true;
+						break;
+					}
+				}
+			}
+			else if(jointsElement == "raw")
+			{
+				for (uint i = 0; i < controlInput.size(); i++)
+				{
+					if(!controlInput.elements[i].hasRaw())
+					{
+						textElement = jointsElement;
+						checkError = true;
+						break;
+					}
+				}
+			}
+			else if(jointsElement == "speed")
+			{
+				for (uint i = 0; i < controlInput.size(); i++)
+				{
+					if(!controlInput.elements[i].hasSpeed())
+					{
+						textElement = jointsElement;
+						checkError = true;
+						break;
+					}
+				}
+			}
+
+			// If there was an error and the errorControlInput is still not set...
+			if(checkError)
+			{
+				LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
+						" The field %s of the controlInput was not set."
+						" \x1b[0m\n\n", textElement.c_str());
+				errorControlInput = true;
+			}
 		}
-		return true;
 	}
 
-	bool DynamicModel::checkPWMCoefficients(void)
+	void DynamicModel::checkPWMCoefficients(void)
 	{
 		std::string textElement;
 		bool checkError = false;
 
-		if(gUWVParameters.thrusterCoeffPWM.positive +
-		   gUWVParameters.linThrusterCoeffPWM.positive +
-		   gUWVParameters.quadThrusterCoeffPWM.positive == 0)
+		if(gThrusterCoeffPWM.positive +
+		   gLinThrusterCoeffPWM.positive +
+		   gQuadThrusterCoeffPWM.positive == 0)
 		{
 			textElement = "positive";
 			checkError = true;
 		}
-		else if (gUWVParameters.thrusterCoeffPWM.negative +
-				gUWVParameters.linThrusterCoeffPWM.negative +
-				gUWVParameters.quadThrusterCoeffPWM.negative == 0)
+		else if (gThrusterCoeffPWM.negative +
+				gLinThrusterCoeffPWM.negative +
+				gQuadThrusterCoeffPWM.negative == 0)
 		{
 			textElement = "negative";
 			checkError = true;
 		}
 
-		if(checkError)
+		// If there was an error and the errorPWMCoeff is still not set...
+		if(checkError && !errorStatus)
 		{
 			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-					  " The %s PWM coefficients were not set.\x1b[0m\n\n",
-					  textElement.c_str());
-			return false;
+					  " The %s PWM coefficients were not set. You should set"
+					  " at least one of the %s PWM coefficients.\x1b[0m\n\n",
+					  textElement.c_str(), textElement.c_str());
+			errorPWMCoeff = true;
 		}
+		// If there is no error anymore and the errorPWMCoeff is set...
+		else if (!checkError && errorPWMCoeff)
+			errorPWMCoeff = false;
 
-		return true;
+		if(gThrusterVoltage == 0 && !errorStatus)
+		{
+			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
+						" The thruster voltage should be greater than zero,"
+						" but its current value is %f.\x1b[0m\n\n"
+						, gThrusterVoltage);
+			errorPWMCoeff = true;
+		}
 	}
 
-	bool DynamicModel::checkRPMCoefficients(void)
+	void DynamicModel::checkRPMCoefficients(void)
 	{
 		std::string textElement;
 		bool checkError = false;
 
-		if(gUWVParameters.thrusterCoeffRPM.positive == 0)
+		if(gThrusterCoeffRPM.positive == 0)
 		{
 			textElement = "positive";
 			checkError = true;
 		}
-		else if (gUWVParameters.thrusterCoeffRPM.negative == 0)
+		else if (gThrusterCoeffRPM.negative == 0)
 		{
 			textElement = "negative";
 			checkError = true;
 		}
 
-		if(checkError)
+		// If there was an error and the errorRPMCoeff is still not set...
+		if(checkError && !errorPWMCoeff)
 		{
 			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
 					" The %s RPM coefficient was not set.\x1b[0m\n\n",
 					textElement.c_str());
-			return false;
+			errorRPMCoeff = true;
 		}
+		// If there is no error anymore and the errorRPMCoeff is set...
+		else if (!checkError && errorRPMCoeff)
+			errorRPMCoeff = false;
 
-		return true;
 	}
 
-	bool DynamicModel::checkErrors(void)
+	void DynamicModel::checkErrors(void)
 	{
 		std::string textElement;
 		bool checkError = false;
 
-		if (errorModelInit)
+		if (errorModelInit && !errorStatus)
 		{
 			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
 					" The model wasn't initialized. Call the method initParameters"
 					" in order to do so or check if there was an error while doing"
 					" it.\x1b[0m\n\n");
-			return false;
+			errorStatus = true;
 		}
-		else if(errorConstruction)
+		else if(errorConstruction && !errorStatus)
 		{
 			textElement = "during the construction of the class";
 			checkError = true;
 		}
-		else if(errorControlInput)
+		else if(errorSetParameters && !errorStatus)
+		{
+			textElement = "while setting the model parameters";
+			checkError = true;
+		}
+		else if(errorPWMCoeff && !errorStatus)
+		{
+			textElement = "with the PWM coefficients";
+			checkError = true;
+		}
+		else if(errorRPMCoeff && !errorStatus)
+		{
+			textElement = "with the RPM coefficients";
+			checkError = true;
+		}
+		else if(errorControlInput && !errorStatus)
 		{
 			textElement = "with the provided control input";
 			checkError = true;
 		}
-		else if(errorInitialization)
-		{
-			textElement = "during the initialization of the model parameters";
-			checkError = true;
-		}
-
-		if(checkError)
+		if(checkError && !errorStatus)
 		{
 			LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
 					" There was an error %s.\x1b[0m\n\n", textElement.c_str());
-			return false;
+			errorStatus = true;
 		}
 
-		return true;
+		if(!errorModelInit 		&&
+		   !errorConstruction 	&&
+		   !errorSetParameters 	&&
+		   !errorPWMCoeff 		&&
+		   !errorRPMCoeff		&&
+		   !errorControlInput 	&&
+		    errorStatus)
+		{
+			errorStatus = false;
+		}
 	}
-
 };
 	
 

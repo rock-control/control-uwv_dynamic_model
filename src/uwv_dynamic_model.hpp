@@ -144,8 +144,43 @@ public:
 
 	/**
 	 * Converts from euler angles to quaternions.
+	 * @param quaternion - Quaternion variable
+	 * @param eulerAngles - Euler angles vector
 	 */
-	void eulerToQuaternion(base::Quaterniond &quaternion, const Eigen::Vector3d &eulerAngles);
+	static void eulerToQuaternion(base::Quaterniond &quaternion,
+						   const Eigen::Vector3d &eulerAngles);
+
+	/**
+	 * Converts the Body-Frame coordinates into World-Frame coordinates.
+	 * @param worldCoordinates - Vector that will receive the world coordinates
+	 * @param bodyCoordinates - Vector that contains the body coordinates
+	 * @param eulerAngles - Current euler angles necessary to do the frame
+	 * 						transformation
+	 */
+	static void convBodyToWorld(base::Vector6d &worldCoordinates,
+								const base::Vector6d &bodyCoordinates,
+								const base::Vector3d &eulerAngles);
+
+	/**
+	 * Converts the World-Frame coordinates into Body-Frame coordinates.
+	 * @param bodyCoordinates - Vector that will receive the body coordinates
+	 * @param worldCoordinates - Vector that contains the world coordinates
+	 * @param eulerAngles - Current euler angles necessary to do the frame
+	 * 						transformation
+	 */
+	static void convWorldToBody(base::Vector6d &bodyCoordinates,
+								const base::Vector6d &worldCoordinates,
+								const base::Vector3d &eulerAngles);
+
+	/**
+	 * Calculates the transformation matrix that is used to transform
+	 * coordinates from Body-Frame to World-Frame.
+	 * ( worldFrame = transMatrix * bodyFrame )
+	 * @param transfMatrix - Transformation matrix
+	 * @param eulerAngles - Current euler angles
+	 */
+	static void calcTransfMatrix(base::Matrix6d &transfMatrix,
+								 const base::Vector3d &eulerAngles);
 
 protected:
 

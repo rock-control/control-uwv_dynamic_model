@@ -20,127 +20,175 @@
  * to do any transformation.
  */
 
+
 #include "RK4Integrator.hpp"
+#include <math.h>
+#include <base/Logging.hpp>
 
-/*************************************************************/
-
-RK4_SIM::RK4_SIM(int _plant_order, 
-	int _ctrl_order,
-	double _integration_step, 
-	double _initial_time, 
-	double *_initial_state)  
-:   plant_order(_plant_order),
-    ctrl_order(_ctrl_order),
-    plant_state(_plant_order),
-    ctrl_input(_ctrl_order),
-    f1(_plant_order),
-    f2(_plant_order),
-    f3(_plant_order),
-    f4(_plant_order),
-    temp(_plant_order)
+namespace uwv_dynamic_model
 {
-    init_param(_integration_step, _initial_time, _initial_state);
+RK4_SIM::RK4_SIM(uint &controlOrder, double integrationStep)
+:   gControlOrder(controlOrder),
+    gSystemOrder(12),
+    gIntegStep(integrationStep)
+{
+	error = false;
+	checkConstruction(controlOrder, integrationStep);
 }
 
-RK4_SIM::~RK4_SIM()
-{}
-
-void RK4_SIM::init_param(double _integration_step, 
-	double _initial_time, 
-	double *_initial_state)
+void RK4_SIM::calcStates(Eigen::VectorXd &systemStates,
+		double &currentTime, const base::Vector6d &controlInput)
 {
-    integration_step = _integration_step;
-    current_time = _initial_time; 
+	/**
+	 * systemStates:
+	 *
+	 * [0] = x			[6]  = u	(SURGE)
+	 * [1] = y			[7]  = v	(SWAY)
+	 * [2] = z			[8]  = w	(HEAVE)
+	 * [3] = theta  	[9]  = p	(ROLL)
+	 * [4] = phi		[10] = q	(PITCH)
+	 * [5] = sigma		[11] = r	(YAW)
+	 *
+	 */
 
-    if (_initial_state == NULL) // No initial conditions specified
-    {
-	for (int i=0; i < plant_order; i++)
+	if(!error)
 	{
-	    plant_state[i] = 0.0;
+		base::Vector6d velocity = systemStates.tail(6);
+
+		// Runge-Kuta coefficients
+		Eigen::VectorXd k1 = Eigen::VectorXd::Zero(gSystemOrder);
+		Eigen::VectorXd k2 = Eigen::VectorXd::Zero(gSystemOrder);
+		Eigen::VectorXd k3 = Eigen::VectorXd::Zero(gSystemOrder);
+		Eigen::VectorXd k4 = Eigen::VectorXd::Zero(gSystemOrder);
+
+		// Calculating Runge-Kutta coefficients
+		calcK1(k1, 	   velocity, controlInput);
+		calcK2(k2, k1, velocity, controlInput);
+		calcK3(k3, k2, velocity, controlInput);
+		calcK4(k4, k3, velocity, controlInput);
+
+		// Updating simulation time
+		currentTime += gIntegStep;
+
+		// Calculating the system states
+		for (int i=0; i < gSystemOrder; i++)
+			systemStates[i] +=	(1.0/6.0) * (k1[i] + 2.0*k2[i] + 2.0*k3[i] + k4[i]);
+
+		// Checking if the angle is between [-PI, PI], and if not, doing the
+		// necessary corrections
+		for (int i = 0; i < 3; i++)
+		{
+			if (systemStates[i+3] > M_PI)
+				systemStates[i+3] -= 2*M_PI;
+
+			else if (systemStates[i+3] < -M_PI)
+				systemStates[i+3] += 2*M_PI;
+		}
 	}
-    }
-    else // Initialize with the provided initial conditions
-    {
-	for (int i=0; i < plant_order; i++)
+}
+
+inline void RK4_SIM::calcK1 (Eigen::VectorXd &k1,
+							 const base::Vector6d &velocity,
+							 const base::Vector6d &controlInput)
+{
+	calcAcceleration(k1, velocity, controlInput);
+
+	updateCoefficient(k1);
+}
+
+inline void RK4_SIM::calcK2 (Eigen::VectorXd &k2, const Eigen::VectorXd &k1,
+							 base::Vector6d velocity,
+							 const base::Vector6d &controlInput)
+{
+
+	for (int i=0; i < 6; i++)
+		velocity[i] += 0.5*k1[i+6];
+
+	calcAcceleration(k2, velocity, controlInput);
+
+	updateCoefficient(k2);
+}
+
+inline void RK4_SIM::calcK3 (Eigen::VectorXd &k3, const Eigen::VectorXd &k2,
+							 base::Vector6d velocity,
+							 const base::Vector6d &controlInput)
+{
+
+	for (int i=0; i < 6; i++)
+		velocity[i] += 0.5*k2[i+6];
+
+	calcAcceleration(k3, velocity, controlInput);
+
+	updateCoefficient(k3);
+}
+
+inline void RK4_SIM::calcK4 (Eigen::VectorXd &k4, const Eigen::VectorXd &k3,
+							 base::Vector6d velocity,
+							 const base::Vector6d &controlInput)
+{
+	for (int i=0; i < 6; i++)
+		velocity[i] += k3[i+6];
+
+	calcAcceleration(k4, velocity, controlInput);
+
+	updateCoefficient(k4);
+}
+
+void RK4_SIM::updateCoefficient(Eigen::VectorXd &k)
+{
+	for (int i=0; i < gSystemOrder; i++)
+		k[i] = gIntegStep * k[i];
+}
+
+void RK4_SIM::checkConstruction(uint &controlOrder, double &integrationStep)
+{
+	std::string textElement;
+	bool checkError = false;
+
+	if (controlOrder == 0)
 	{
-	    plant_state[i] = _initial_state[i];
+		textElement = "control order";
+		checkError = true;
 	}
-    }
+	else if (integrationStep <= 0)
+	{
+		textElement = "integration step";
+		checkError = true;
+	}
 
-    // Initial control is zero
-    for (int i=0; i < ctrl_order; i++)
-    {
-	ctrl_input[i] = 0.0;
-    }
+	if(checkError)
+	{
+		LOG_ERROR("\n\n\x1b[31m (Library: RK4Integrator.cpp)"
+				  " The %s should be greater than zero.\x1b[0m\n\n",
+					textElement.c_str());
+		error = true;
+	}
 }
 
-void RK4_SIM::solve (void)
+void RK4_SIM::checkInputs(Eigen::VectorXd &systemStates, double &currentTime,
+						  const base::Vector6d &controlInput)
 {
-    // Determine Runge-Kutta coefficients
-    F1 ();
-    F2 ();
-    F3 ();
-    F4 ();
+	if( !(systemStates.size() == 12))
+	{
+		LOG_ERROR("\n\n\x1b[31m (Library: RK4Integrator.cpp)"
+			      " The systemStates should have a size equal to 12,"
+			      " but its size is equal to %i.\x1b[0m\n\n",
+			       systemStates.size());
+		error = true;
+	}
 
-    // Update time and output values
-    current_time += integration_step;
-    for (int i=0; i < plant_order; i++)
-    {
-	plant_state[i] = plant_state[i] + 
-	    (1.0/6.0) * (f1[i] + 2.0*f2[i] + 2.0*f3[i] + f4[i]);
-    }
+	if( !(controlInput.size() > 0))
+	{
+		LOG_ERROR("\n\n\x1b[31m (Library: RK4Integrator.cpp)"
+			      " The controlInput has a size equal to 0 (zero).\x1b[0m\n\n");
+		error = true;
+	}
+
+	if( !(currentTime > 0))
+	{
+		LOG_ERROR("\n\n\x1b[31m (Library: RK4Integrator.cpp)"
+			      " The currentTime shoud be positive.\x1b[0m\n\n");
+		error = true;
+	}
 }
-
-inline void RK4_SIM::F1 (void)
-{
-    DERIV (current_time, &(plant_state[0]), &(ctrl_input[0]), &(f1[0]));
-    for (int i=0; i < plant_order; i++)
-    {
-	f1[i] = integration_step * f1[i];
-    }
-}
-
-inline void RK4_SIM::F2 (void)
-{
-    for (int i=0; i < plant_order; i++)
-    {
-	temp[i] = plant_state[i] + 0.5*f1[i];
-    }
-
-    DERIV ((current_time + 0.5*integration_step), &(temp[0]), &(ctrl_input[0]), &(f2[0]));
-
-    for (int i=0; i < plant_order; i++)
-    {
-	f2[i] = integration_step * f2[i];
-    }
-}
-
-inline void RK4_SIM::F3 (void)
-{
-    for (int i=0; i < plant_order; i++)
-    {
-	temp[i] = plant_state[i] + 0.5*f2[i];
-    }
-
-    DERIV ((current_time + 0.5*integration_step), &(temp[0]), &(ctrl_input[0]), &(f3[0]));
-
-    for (int i=0; i < plant_order; i++)
-    {
-	f3[i] = integration_step * f3[i];
-    }
-}
-
-inline void RK4_SIM::F4 (void)
-{
-    for (int i=0; i < plant_order; i++)
-    {
-	temp[i] = plant_state[i] + f3[i];
-    }
-
-    DERIV ((current_time + integration_step), &(temp[0]), &(ctrl_input[0]), &(f4[0]));
-
-    for (int i=0; i < plant_order; i++)
-    {
-	f4[i] = integration_step * f4[i];
-    }
-}
+};

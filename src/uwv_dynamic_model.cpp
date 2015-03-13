@@ -55,6 +55,7 @@ namespace uwv_dynamic_model
 			// Model parameters
 			setInertiaMatrix(Eigen::MatrixXd::Zero(6,6));
 			setCoriolisMatrix(Eigen::MatrixXd::Zero(6,6));
+			setAddedMassMatrix(Eigen::MatrixXd::Zero(6,6));
 			setLinDampingMatrix(Eigen::MatrixXd::Zero(6,6));
 			setQuadDampingMatrix(Eigen::MatrixXd::Zero(6,6));
 			gThrustConfigMatrix = Eigen::MatrixXd::Zero(6,1);
@@ -252,22 +253,28 @@ namespace uwv_dynamic_model
 		// Forces and Moments vectors
 		base::Matrix6d invInertiaMatrix 	= 	Eigen::MatrixXd::Zero(6,6);
 		base::Vector6d coriolisEffect		=	Eigen::VectorXd::Zero(6);
-		base::Vector6d linDamping			=	Eigen::VectorXd::Zero(6);
-		base::Vector6d quadDamping			=	Eigen::VectorXd::Zero(6);
+		base::Vector6d RBCoriolis 	        =	Eigen::VectorXd::Zero(6);
+		base::Vector6d AddedMassCoriolis	=	Eigen::VectorXd::Zero(6);
+		base::Vector6d linDamping		=	Eigen::VectorXd::Zero(6);
+		base::Vector6d quadDamping		=	Eigen::VectorXd::Zero(6);
+		base::Vector6d LiftEffect		=	Eigen::VectorXd::Zero(6);
 		base::Vector6d gravityBuoyancy		=	Eigen::VectorXd::Zero(6);
-		base::Vector6d acceleration			=	Eigen::VectorXd::Zero(6);
+		base::Vector6d acceleration		=	Eigen::VectorXd::Zero(6);
 		base::Vector6d worldVelocity		=	Eigen::VectorXd::Zero(6);
 
 		// Calculating the efforts for each one of the hydrodynamics effects
 		calcInvInertiaMatrix(invInertiaMatrix, velocity);
 		calcCoriolisEffect(coriolisEffect, velocity);
+		calcRBCoriolis(RBCoriolis, velocity);
+		calcAddedMassCoriolis(AddedMassCoriolis, velocity);
 		calcLinDamping(linDamping, velocity);
 		calcQuadDamping(quadDamping, velocity);
+		calcLiftEffect(LiftEffect, velocity);
 		calcGravityBuoyancy(gravityBuoyancy, gEulerOrientation);
 
 		// Calculating the acceleration based on all the hydrodynamics effects
-		acceleration  = invInertiaMatrix * ( gEfforts - coriolisEffect -
-				        linDamping - quadDamping - gravityBuoyancy );
+		acceleration  = invInertiaMatrix * ( gEfforts - coriolisEffect - RBCoriolis - AddedMassCoriolis - LiftEffect  -
+				        linDamping - quadDamping - gravityBuoyancy);
 
 		// Converting the body velocity to world velocity. This is necessary because
 		// when the integration takes place in order to find the position, the velocity
@@ -306,6 +313,9 @@ namespace uwv_dynamic_model
 						uwvParameters.inertiaMatrixNeg);
 				setCoriolisMatrix(uwvParameters.coriolisMatrixPos,
 						uwvParameters.coriolisMatrixNeg);
+				setAddedMassMatrix(uwvParameters.AddedMassMatrixPos,
+						uwvParameters.AddedMassMatrixNeg);
+				setLiftCoefficients(uwvParameters.LiftCoefficients);
 				setLinDampingMatrix(uwvParameters.linDampMatrixPos,
 						uwvParameters.linDampMatrixPos);
 				setQuadDampingMatrix(uwvParameters.quadDampMatrixPos,
@@ -365,11 +375,14 @@ namespace uwv_dynamic_model
 		uwvParameters.inertiaMatrixNeg 		= gInertiaMatrixNeg;
 		uwvParameters.coriolisMatrixPos 	= gCoriolisMatrixPos;
 		uwvParameters.coriolisMatrixNeg 	= gCoriolisMatrixNeg;
+		uwvParameters.AddedMassMatrixPos 	= gAddedMassMatrixPos;
+		uwvParameters.AddedMassMatrixNeg 	= gAddedMassMatrixNeg;
 		uwvParameters.linDampMatrixPos 		= gLinDampMatrixPos;
 		uwvParameters.linDampMatrixNeg	 	= gLinDampMatrixNeg;
 		uwvParameters.quadDampMatrixPos 	= gQuadDampMatrixPos;
 		uwvParameters.quadDampMatrixNeg 	= gQuadDampMatrixNeg;
 		uwvParameters.thrustConfigMatrix 	= gThrustConfigMatrix;
+		uwvParameters.LiftCoefficients  	= gLiftCoefficients;
 
 		uwvParameters.thrusterCoeffPWM 		= gThrusterCoeffPWM;
 		uwvParameters.linThrusterCoeffPWM 	= gLinThrusterCoeffPWM;
@@ -467,10 +480,13 @@ namespace uwv_dynamic_model
 						 ( sin(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*cos(eulerAngles(2)/2) );
 	}
 
+//Function modified to include added mass
 	void DynamicModel::calcInvInertiaMatrix(base::Matrix6d &invInertiaMatrix,
 			 	 	 	 	 	 	 	    const base::Vector6d &velocity)
 	{	
 		Eigen::MatrixXd inertiaMatrix = Eigen::MatrixXd::Zero(6,6);
+                Eigen::MatrixXd AddedMassMatrix = Eigen::MatrixXd::Zero(6,6);
+
 		for(int i = 0; i < 6; i++)
 		{
 			if(velocity(i) > -0.001)
@@ -479,9 +495,21 @@ namespace uwv_dynamic_model
 				inertiaMatrix.block(0 , i , 6, 1) = gInertiaMatrixNeg.block(0 , i , 6, 1);
 		}
 
+		for(int i = 0; i < 6; i++)
+		{
+			if(velocity(i) > -0.001)
+				AddedMassMatrix.block(0 , i , 6, 1) = gAddedMassMatrixPos.block(0 , i , 6, 1);
+			else
+				AddedMassMatrix.block(0 , i , 6, 1) = gAddedMassMatrixNeg.block(0 , i , 6, 1);
+		}
+
+                inertiaMatrix = inertiaMatrix + AddedMassMatrix;
+
 		invInertiaMatrix = inertiaMatrix.inverse();
 	}
 
+
+//Needs to be edited
 	void DynamicModel::calcCoriolisEffect(base::Vector6d &coriolisEffect,
 										  const base::Vector6d &velocity)
 	{
@@ -533,6 +561,117 @@ namespace uwv_dynamic_model
 		quadDamping = quadDampMatrix*absoluteVelocity.asDiagonal()*velocity;
 	}
 
+
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+// New function to calculate lift effect
+
+void DynamicModel::calcLiftEffect(base::Vector6d &LiftEffect,
+									   const base::Vector6d &velocity)
+	{
+		double u = gLinearVelocity(0);
+		double v = gLinearVelocity(1);
+		double w = gLinearVelocity(2);
+
+//need to write a function the gets LiftCoefficient
+               LiftEffect(0) = 0;
+               LiftEffect(1) = gLiftCoefficients(0)*u*v; 
+               LiftEffect(2) = gLiftCoefficients(1)*u*w; 
+               LiftEffect(3) = 0; 
+               LiftEffect(4) = gLiftCoefficients(2)*u*w; 
+               LiftEffect(5) = gLiftCoefficients(3)*u*v;  
+
+	}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+// New function to create Rigid-Body coriolis and centripetal forces
+
+void DynamicModel::calcRBCoriolis(base::Vector6d &RBCoriolis,
+										   const base::Vector6d &velocity)
+	{
+
+		float xg = gCenterOfGravity(0);
+		float yg = gCenterOfGravity(1);
+		float zg = gCenterOfGravity(2);
+
+		float m = gInertiaMatrixPos(0,0);
+		float Ix = gInertiaMatrixPos(3,3);
+		float Iy = gInertiaMatrixPos(4,4);
+		float Iz = gInertiaMatrixPos(5,5);
+		float Ixy = -gInertiaMatrixPos(3,4);
+		float Iyz = -gInertiaMatrixPos(4,5);
+		float Izx = -gInertiaMatrixPos(3,5);
+
+		double u = gLinearVelocity(0);
+		double v = gLinearVelocity(1);
+		double w = gLinearVelocity(2);
+
+		double p = gAngularVelocity(0);
+		double q = gAngularVelocity(1);
+		double r = gAngularVelocity(2);
+
+
+		RBCoriolis(0) 	=  m*(-v*r + w*q - xg*(q*q + r*r) +yg*p*q + zg*p*r);
+		RBCoriolis(1) 	=  m*(-w*p + u*r - yg*(r*r + p*p) +zg*q*r + xg*q*p);
+		RBCoriolis(2) 	=  m*(-u*q + v*p - zg*(p*p + q*q) +xg*r*p + yg*r*q);
+		RBCoriolis(3) 	=  (Iz - Iy)*q*r - p*q*Izx + (r*r - q*q)*Iyz + p*r*Ixy + m*(yg*(-u*q + v*p) - zg*(-w*p + u*r));
+		RBCoriolis(4) 	=  (Ix - Iz)*r*p - q*r*Ixy + (p*p - r*r)*Izx + q*p*Iyz + m*(zg*(-v*r + w*q) - xg*(-u*q + v*p));
+		RBCoriolis(5) 	=  (Iy - Ix)*p*q - r*p*Iyz + (q*q - p*p)*Ixy + r*q*Izx + m*(xg*(-w*p + u*r) - yg*(-v*r + w*q));
+
+	}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+// New function to create Added Mass coriolis and centripetal forces
+
+void DynamicModel::calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis,
+										   const base::Vector6d &velocity)
+	{
+
+		double u = gLinearVelocity(0);
+		double v = gLinearVelocity(1);
+		double w = gLinearVelocity(2);
+
+		double p = gAngularVelocity(0);
+		double q = gAngularVelocity(1);
+		double r = gAngularVelocity(2);
+
+//(need to check if "setAddedMassMatrix" function is correct)
+
+                Eigen::MatrixXd gAddedMassMatrix = Eigen::MatrixXd::Zero(6,6);
+
+		for(int i = 0; i < 6; i++)
+		{
+			if(velocity(i) > -0.001)
+				gAddedMassMatrix.block(0 , i , 6, 1) = gAddedMassMatrixPos.block(0 , i , 6, 1);
+			else
+				gAddedMassMatrix.block(0 , i , 6, 1) = gAddedMassMatrixNeg.block(0 , i , 6, 1);
+		}
+
+
+		double a1 = gAddedMassMatrix(0,0)*u + gAddedMassMatrix(0,1)*v + gAddedMassMatrix(0,2)*w + gAddedMassMatrix(0,3)*p + gAddedMassMatrix(0,4)*q + gAddedMassMatrix(0,5)*r;
+		double a2 = gAddedMassMatrix(0,1)*u + gAddedMassMatrix(1,1)*v + gAddedMassMatrix(1,2)*w + gAddedMassMatrix(1,3)*p + gAddedMassMatrix(1,4)*q + gAddedMassMatrix(1,5)*r;
+		double a3 = gAddedMassMatrix(0,2)*u + gAddedMassMatrix(1,2)*v + gAddedMassMatrix(2,2)*w + gAddedMassMatrix(2,3)*p + gAddedMassMatrix(2,4)*q + gAddedMassMatrix(2,5)*r;
+		double b1 = gAddedMassMatrix(0,3)*u + gAddedMassMatrix(1,3)*v + gAddedMassMatrix(2,3)*w + gAddedMassMatrix(3,3)*p + gAddedMassMatrix(3,4)*q + gAddedMassMatrix(3,5)*r;
+		double b2 = gAddedMassMatrix(0,4)*u + gAddedMassMatrix(1,4)*v + gAddedMassMatrix(2,4)*w + gAddedMassMatrix(3,4)*p + gAddedMassMatrix(4,4)*q + gAddedMassMatrix(4,5)*r;
+		double b3 = gAddedMassMatrix(0,5)*u + gAddedMassMatrix(1,5)*v + gAddedMassMatrix(2,5)*w + gAddedMassMatrix(3,5)*p + gAddedMassMatrix(4,5)*q + gAddedMassMatrix(5,5)*r;
+
+
+		AddedMassCoriolis(0) 	= -a3*v + a2*r;
+		AddedMassCoriolis(1) 	=  a3*p - a1*r;
+		AddedMassCoriolis(2) 	= -a2*p + a1*q;
+		AddedMassCoriolis(3) 	= -a3*v + a2*w - b3*q + b2*r;
+		AddedMassCoriolis(4) 	=  a3*u - a1*w + b3*p - b1*r;
+		AddedMassCoriolis(5) 	= -a2*u + a1*v - b2*p + b1*q;
+
+	}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+
 	void DynamicModel::calcGravityBuoyancy(base::Vector6d &gravitybuoyancy,
 										   const Eigen::Vector3d &eulerOrientation)
 	{
@@ -544,6 +683,9 @@ namespace uwv_dynamic_model
 		float xb = gCenterOfBuoyancy(0);
 		float yb = gCenterOfBuoyancy(1);
 		float zb = gCenterOfBuoyancy(2);
+
+		/*if (gBuoyancy == 0 && gWeight != 0)
+			gUWVFloat = true;*/
 
 		if (gUWVFloat == true)
 			gWeight = gBuoyancy;
@@ -661,7 +803,7 @@ namespace uwv_dynamic_model
 
 	void DynamicModel::updateStates(Eigen::VectorXd &newSystemStates)
 	{
-		gPosition 			= newSystemStates.segment(0,3);
+		gPosition 		= newSystemStates.segment(0,3);
 		gEulerOrientation 	= newSystemStates.segment(3,3);
 		gLinearVelocity 	= newSystemStates.segment(6,3);
 		gAngularVelocity 	= newSystemStates.segment(9,3);
@@ -684,7 +826,23 @@ namespace uwv_dynamic_model
 
 		checkNegativeMatrices(gCoriolisMatrixNeg, gCoriolisMatrixPos);
 	}
+//------------------------------------------------------------------------------------------------------------------------------------------------------
+	void DynamicModel::setAddedMassMatrix(const base::Matrix6d &AddedMassMatrixPos,
+			const base::Matrix6d &AddedMassMatrixNeg)
+	{
+		gAddedMassMatrixPos = AddedMassMatrixPos;
+		gAddedMassMatrixNeg = AddedMassMatrixNeg;
 
+		checkNegativeMatrices(gAddedMassMatrixNeg, gAddedMassMatrixPos);
+	}
+//------------------------------------------------------------------------------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------
+	void DynamicModel::setLiftCoefficients(const base::Vector4d &LiftCoefficients)
+	{
+		gLiftCoefficients = LiftCoefficients;
+	}
+//------------------------------------------------------------------------------------------------------------------------------------------------------
 	void DynamicModel::setLinDampingMatrix(const base::Matrix6d &linDampingMatrixPos,
 			const base::Matrix6d &linDampingMatrixNeg)
 	{
@@ -872,6 +1030,12 @@ namespace uwv_dynamic_model
 					  "\x1b[0m\n\n", textElement.c_str());
 			errorSetParameters = true;
 		}
+if(pwvParameters.uwvMass!=0 && pwvParameters.uwvVolume==0)
+               {LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
+					  " The uwvVolume should not be zero. Please set a positive"
+					  " value for it, or set uwvFloat: true if weight and buoyancy are equal."
+					  "\x1b[0m\n\n");
+			errorSetParameters = true;}
 	}
 
 	void DynamicModel::checkPositiveMatrices(void)
@@ -884,11 +1048,11 @@ namespace uwv_dynamic_model
 			textElement = "positive inertia matrix";
 			checkError= true;
 		}
-		else if (gLinDampMatrixPos == Eigen::MatrixXd::Zero(6,6))
+	/*	else if (gLinDampMatrixPos == Eigen::MatrixXd::Zero(6,6))
 		{
 			textElement = "positive linear damping matrix";
 			checkError= true;;
-		}
+		}*/
 		else if (gThrustConfigMatrix.size() == 0)
 		{
 			textElement = "thrust configuration matrix";

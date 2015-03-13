@@ -59,6 +59,12 @@ namespace uwv_dynamic_model
 		base::Matrix6d coriolisMatrixNeg;
 
 		/**
+		 * Added Mass matrices for positive and negative speeds
+		 */
+		base::Matrix6d AddedMassMatrixPos;
+		base::Matrix6d AddedMassMatrixNeg;
+
+		/**
 		 * Linear damping matrices for positive and negative speeds
 		 */
 		base::Matrix6d linDampMatrixPos;
@@ -69,6 +75,11 @@ namespace uwv_dynamic_model
 		 */
 		base::Matrix6d quadDampMatrixPos;
 		base::Matrix6d quadDampMatrixNeg;
+
+		/**
+		 * Lift coefficients (Yuv, Zuw, Muw, Nuv)
+		 */
+		base::Vector4d LiftCoefficients;
 
 		/**
 		 * Thrust configuration matrix
@@ -148,6 +159,8 @@ namespace uwv_dynamic_model
 			inertiaMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
 			coriolisMatrixPos(Eigen::MatrixXd::Zero(6,6)),
 			coriolisMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
+                        AddedMassMatrixPos(Eigen::MatrixXd::Zero(6,6)),
+			AddedMassMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
 			linDampMatrixPos(Eigen::MatrixXd::Zero(6,6)),
 			linDampMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
 			quadDampMatrixPos(Eigen::MatrixXd::Zero(6,6)),
@@ -155,6 +168,7 @@ namespace uwv_dynamic_model
 			thrustConfigMatrix(Eigen::MatrixXd::Zero(6,1)),
 			centerOfBuoyancy(Eigen::VectorXd::Zero(3)),
 			centerOfGravity(Eigen::VectorXd::Zero(3)),
+			LiftCoefficients(Eigen::VectorXd::Zero(4)),
 			uwvMass(0),
 			uwvVolume(0),
 			uwvFloat(false),

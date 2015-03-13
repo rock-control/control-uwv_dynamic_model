@@ -1,0 +1,43 @@
+In uwv_dynamic_model.cpp:
+
+Line 58: "setAddedMassMatrix(Eigen::MatrixXd::Zero(6,6));" added.
+
+Line 310: "setAddedMassMatrix(uwvParameters.AddedMassMatrixPos,
+						uwvParameters.AddedMassMatrixNeg);" added.
+
+Line 312: "setLiftCoefficients(uwvParameters.LiftCoefficients);" added.
+
+Line 372: "uwvParameters.AddedMassMatrixPos 	= gAddedMassMatrixPos;
+	   uwvParameters.AddedMassMatrixNeg 	= gAddedMassMatrixNeg;" added.
+
+Line 379: "uwvParameters.LiftCoefficients  	= gLiftCoefficients;" added.
+
+
+Line 480: fuction "calcInvInertiaMatrix" modified to include the added mass inertia matrix.
+
+Line 563: new function added to calculate the lift effect.
+
+Line 585: new function added to calculate the rigid-body coriolis and centripetal forces (using equation (2.102) in [1]).
+
+Line 625: new function added to calculate the added mass coriolis and centripetal forces (using equations (2.127) and (2.128) in [1]).
+
+Line 819: new function "DynamicModel::setAddedMassMatrix" added to set the added mass matrix.
+
+Line 832: new function "DynamicModel::setLiftCoefficients" added the set the lift coefficients (from equations 4.34 and 4.36 in [2])
+
+
+
+
+In uwv_dynamic_model.hpp:
+
+Line 214: calcLiftEffect added.
+Line 215: calcRBCoriolis added.
+Line 216: calcAddedMassCoriolis added.
+Line 269: setAddedMassMatrixMatrix.
+Line 408: "gCoriolisMatrixPos" and "gCoriolisMatrixPos" added.
+
+
+In uwv_dataTypes.hpp:
+
+Line 64: "AddedMassMatrixPos" and "AddedMassMatrixNeg" added.
+Line 157: "AddedMassMatrixPos" and "AddedMassMatrixNeg" added.

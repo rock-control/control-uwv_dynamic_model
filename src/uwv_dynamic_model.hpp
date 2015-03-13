@@ -211,6 +211,9 @@ private:
 	 * and negative hydrodynamic matrices.
 	 */
 	void calcCoriolisEffect(base::Vector6d &coriolisEffect, const base::Vector6d &velocity);
+        void calcLiftEffect(base::Vector6d &LiftEffect, const base::Vector6d &velocity);
+        void calcRBCoriolis(base::Vector6d &RBCoriolis, const base::Vector6d &velocity);
+        void calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis, const base::Vector6d &velocity);
 	void calcLinDamping(base::Vector6d &linDamping, const base::Vector6d &velocity);
 	void calcQuadDamping(base::Vector6d &quadDamping, const base::Vector6d &velocity);
 	void calcGravityBuoyancy(base::Vector6d &gravitybuoyancy, const Eigen::Vector3d &eulerOrientation);
@@ -257,6 +260,22 @@ private:
 	void setCoriolisMatrix(const base::Matrix6d &coriolisMatrixPos,
 						   const base::Matrix6d &coriolisMatrixNeg =
 								 Eigen::MatrixXd::Zero(6,6));
+
+         /**
+	 * Sets the Added Mass matrices
+	 * @param AddedMassMatrixPos - Added mass matrix for positive velocities
+	 * @param AddedMassMatrixMatrixNeg - Added mass matrix for negative velocities
+	 */
+	void setAddedMassMatrix(const base::Matrix6d &AddedMassMatrixPos,
+						   const base::Matrix6d &AddedMassMatrixNeg =
+								 Eigen::MatrixXd::Zero(6,6));
+
+
+         /**
+	 * Sets the Lift coefficients
+	 * @param LiftCoefficients
+	 */
+         void setLiftCoefficients(const base::Vector4d &LiftCoefficients);
 
 	/**
 	 * Sets the Linear Damping matrices
@@ -393,6 +412,12 @@ private:
 	base::Matrix6d gCoriolisMatrixNeg;
 
 	/**
+	 * Coriolis matrices for positive and negative speeds
+	 */
+	base::Matrix6d gAddedMassMatrixPos;
+	base::Matrix6d gAddedMassMatrixNeg;
+
+	/**
 	 * Linear damping matrices for positive and negative speeds
 	 */
 	base::Matrix6d gLinDampMatrixPos;
@@ -408,6 +433,11 @@ private:
 	 * Thrust configuration matrix
 	 */
 	Eigen::MatrixXd gThrustConfigMatrix;
+
+	/**
+	 * Lift coefficients
+	 */
+	Eigen::Vector4d gLiftCoefficients;
 
 	/**
 	 * Thrusters' coefficients for PWM and RPM

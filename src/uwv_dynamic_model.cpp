@@ -1,7 +1,7 @@
 /***************************************************************************/
-/*  Dynamic model for an underwater vehicle	                               */
+/*  Dynamic model for an underwater vehicle	                           */
 /*                                                                         */
-/* FILE --- uwv_dynamic_model.cpp	                                       */
+/* FILE --- uwv_dynamic_model.cpp	                                   */
 /*                                                                         */
 /* PURPOSE --- Source file for a Dynamic model of an 	                   */
 /*             underwater vehicle. Based on T.I.Fossen & Giovanni Indiveri */
@@ -9,6 +9,12 @@
 /*  Sankaranarayanan Natarajan                                             */
 /*  sankar.natarajan@dfki.de                                               */
 /*  DFKI - BREMEN 2011                                                     */
+/*                                                                         */
+/*  This file was edited to include the full Fossen Model                  */
+/*                                                                         */
+/*  Bilal Wehbe                                                            */
+/*  bilal.wehbe@dfki.de                                                    */
+/*  DFKI - BREMEN 2015                                                     */
 /***************************************************************************/
 
 
@@ -261,6 +267,7 @@ namespace uwv_dynamic_model
 		base::Vector6d gravityBuoyancy		=	Eigen::VectorXd::Zero(6);
 		base::Vector6d acceleration		=	Eigen::VectorXd::Zero(6);
 		base::Vector6d worldVelocity		=	Eigen::VectorXd::Zero(6);
+		base::Vector6d ModelCorrection		=	Eigen::VectorXd::Zero(6);
 
 		// Calculating the efforts for each one of the hydrodynamics effects
 		calcInvInertiaMatrix(invInertiaMatrix, velocity);
@@ -271,10 +278,11 @@ namespace uwv_dynamic_model
 		calcQuadDamping(quadDamping, velocity);
 		calcLiftEffect(LiftEffect, velocity);
 		calcGravityBuoyancy(gravityBuoyancy, gEulerOrientation);
+		calcModelCorrection(ModelCorrection, velocity);
 
 		// Calculating the acceleration based on all the hydrodynamics effects
 		acceleration  = invInertiaMatrix * ( gEfforts - coriolisEffect - RBCoriolis - AddedMassCoriolis - LiftEffect  -
-				        linDamping - quadDamping - gravityBuoyancy);
+				        linDamping - quadDamping - gravityBuoyancy - ModelCorrection);
 
 		// Converting the body velocity to world velocity. This is necessary because
 		// when the integration takes place in order to find the position, the velocity
@@ -506,10 +514,11 @@ namespace uwv_dynamic_model
                 inertiaMatrix = inertiaMatrix + AddedMassMatrix;
 
 		invInertiaMatrix = inertiaMatrix.inverse();
+
 	}
 
 
-//Needs to be edited
+//Important: when setting coriolis Matrix in the yml file, make sure to set the added mass matrix to zero and add the added mass values to the inertia matrix.
 	void DynamicModel::calcCoriolisEffect(base::Vector6d &coriolisEffect,
 										  const base::Vector6d &velocity)
 	{
@@ -564,29 +573,27 @@ namespace uwv_dynamic_model
 
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
-// New function to calculate lift effect
+// New function to calculate lift effect. Lift forces and moments are calculated by formulas from [Prestero (1994)].
 
 void DynamicModel::calcLiftEffect(base::Vector6d &LiftEffect,
 									   const base::Vector6d &velocity)
 	{
-		double u = gLinearVelocity(0);
-		double v = gLinearVelocity(1);
-		double w = gLinearVelocity(2);
+		double u = velocity[0];
+		double v = velocity[1];
+		double w = velocity[2];
 
-//need to write a function the gets LiftCoefficient
                LiftEffect(0) = 0;
                LiftEffect(1) = gLiftCoefficients(0)*u*v; 
                LiftEffect(2) = gLiftCoefficients(1)*u*w; 
                LiftEffect(3) = 0; 
                LiftEffect(4) = gLiftCoefficients(2)*u*w; 
                LiftEffect(5) = gLiftCoefficients(3)*u*v;  
-
 	}
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
-// New function to create Rigid-Body coriolis and centripetal forces
+// New function to create Rigid-Body coriolis and centripetal forces. Formulas are found in [Fossen (1994)].
 
 void DynamicModel::calcRBCoriolis(base::Vector6d &RBCoriolis,
 										   const base::Vector6d &velocity)
@@ -604,13 +611,13 @@ void DynamicModel::calcRBCoriolis(base::Vector6d &RBCoriolis,
 		float Iyz = -gInertiaMatrixPos(4,5);
 		float Izx = -gInertiaMatrixPos(3,5);
 
-		double u = gLinearVelocity(0);
-		double v = gLinearVelocity(1);
-		double w = gLinearVelocity(2);
+		double u = velocity[0];
+		double v = velocity[1];
+		double w = velocity[2];
 
-		double p = gAngularVelocity(0);
-		double q = gAngularVelocity(1);
-		double r = gAngularVelocity(2);
+		double p = velocity[3];
+		double q = velocity[4];
+		double r = velocity[5];
 
 
 		RBCoriolis(0) 	=  m*(-v*r + w*q - xg*(q*q + r*r) +yg*p*q + zg*p*r);
@@ -619,28 +626,25 @@ void DynamicModel::calcRBCoriolis(base::Vector6d &RBCoriolis,
 		RBCoriolis(3) 	=  (Iz - Iy)*q*r - p*q*Izx + (r*r - q*q)*Iyz + p*r*Ixy + m*(yg*(-u*q + v*p) - zg*(-w*p + u*r));
 		RBCoriolis(4) 	=  (Ix - Iz)*r*p - q*r*Ixy + (p*p - r*r)*Izx + q*p*Iyz + m*(zg*(-v*r + w*q) - xg*(-u*q + v*p));
 		RBCoriolis(5) 	=  (Iy - Ix)*p*q - r*p*Iyz + (q*q - p*p)*Ixy + r*q*Izx + m*(xg*(-w*p + u*r) - yg*(-v*r + w*q));
-
 	}
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
-// New function to create Added Mass coriolis and centripetal forces
+// New function to create Added Mass coriolis and centripetal forces. Formulas are found in [Fossen (1994)].
 
 void DynamicModel::calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis,
 										   const base::Vector6d &velocity)
 	{
 
-		double u = gLinearVelocity(0);
-		double v = gLinearVelocity(1);
-		double w = gLinearVelocity(2);
+		double u = velocity[0];
+		double v = velocity[1];
+		double w = velocity[2];
 
-		double p = gAngularVelocity(0);
-		double q = gAngularVelocity(1);
-		double r = gAngularVelocity(2);
-
-//(need to check if "setAddedMassMatrix" function is correct)
+		double p = velocity[3];
+		double q = velocity[4];
+		double r = velocity[5];
 
                 Eigen::MatrixXd gAddedMassMatrix = Eigen::MatrixXd::Zero(6,6);
 
@@ -661,17 +665,40 @@ void DynamicModel::calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis,
 		double b3 = gAddedMassMatrix(0,5)*u + gAddedMassMatrix(1,5)*v + gAddedMassMatrix(2,5)*w + gAddedMassMatrix(3,5)*p + gAddedMassMatrix(4,5)*q + gAddedMassMatrix(5,5)*r;
 
 
-		AddedMassCoriolis(0) 	= -a3*v + a2*r;
-		AddedMassCoriolis(1) 	=  a3*p - a1*r;
-		AddedMassCoriolis(2) 	= -a2*p + a1*q;
-		AddedMassCoriolis(3) 	= -a3*v + a2*w - b3*q + b2*r;
-		AddedMassCoriolis(4) 	=  a3*u - a1*w + b3*p - b1*r;
-		AddedMassCoriolis(5) 	= -a2*u + a1*v - b2*p + b1*q;
+		AddedMassCoriolis(0) 	= -(-a3*q + a2*r);
+		AddedMassCoriolis(1) 	= -(a3*p - a1*r);
+		AddedMassCoriolis(2) 	= -(-a2*p + a1*q);
+		AddedMassCoriolis(3) 	= -(-a3*v + a2*w - b3*q + b2*r);
+		AddedMassCoriolis(4) 	= -(a3*u - a1*w + b3*p - b1*r);
+		AddedMassCoriolis(5) 	= -(-a2*u + a1*v - b2*p + b1*q);
 
 	}
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+// New function to correct model forces
 
+void DynamicModel::calcModelCorrection(base::Vector6d &ModelCorrection,
+										   const base::Vector6d &velocity)
+	{
+
+		double u = velocity[0];
+		//double v = velocity[1];
+		//double w = velocity[2];
+
+		//double p = velocity[3];
+		double q = velocity[4];
+		double r = velocity[5];
+
+		ModelCorrection(0) 	= 0;
+		ModelCorrection(1) 	= 0;
+		ModelCorrection(2) 	= 0;
+		ModelCorrection(3) 	= 0;
+		ModelCorrection(4) 	= 21.36*u*q;
+		ModelCorrection(5) 	= 41.93*u*r;
+	}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 	void DynamicModel::calcGravityBuoyancy(base::Vector6d &gravitybuoyancy,
 										   const Eigen::Vector3d &eulerOrientation)
 	{
@@ -688,7 +715,7 @@ void DynamicModel::calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis,
 			gUWVFloat = true;*/
 
 		if (gUWVFloat == true)
-			gWeight = gBuoyancy;
+			gBuoyancy = gWeight;
 
 		gravitybuoyancy(0) 	= 	(gWeight - gBuoyancy) * sin(e2);
 		gravitybuoyancy(1) 	=  -(gWeight - gBuoyancy) * (cos(e2)*sin(e1));
@@ -699,6 +726,7 @@ void DynamicModel::calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis,
 								((xg*gWeight - xb*gBuoyancy)*cos(e2)*cos(e1));
 		gravitybuoyancy(5) 	=  -((xg*gWeight - xb*gWeight)*cos(e2)*sin(e1)) -
 								((yg*gWeight - yb*gBuoyancy)* sin(e2));
+
 
 	}
 
@@ -827,6 +855,7 @@ void DynamicModel::calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis,
 		checkNegativeMatrices(gCoriolisMatrixNeg, gCoriolisMatrixPos);
 	}
 //------------------------------------------------------------------------------------------------------------------------------------------------------
+//new function added to set the added mass matrix
 	void DynamicModel::setAddedMassMatrix(const base::Matrix6d &AddedMassMatrixPos,
 			const base::Matrix6d &AddedMassMatrixNeg)
 	{
@@ -838,6 +867,7 @@ void DynamicModel::calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis,
 //------------------------------------------------------------------------------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------
+//new function added to set the lift coefficients
 	void DynamicModel::setLiftCoefficients(const base::Vector4d &LiftCoefficients)
 	{
 		gLiftCoefficients = LiftCoefficients;
@@ -1030,7 +1060,7 @@ void DynamicModel::calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis,
 					  "\x1b[0m\n\n", textElement.c_str());
 			errorSetParameters = true;
 		}
-if(pwvParameters.uwvMass!=0 && pwvParameters.uwvVolume==0)
+if(pwvParameters.uwvMass!=0 && pwvParameters.uwvVolume==0 && pwvParameters.uwvFloat != true)
                {LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
 					  " The uwvVolume should not be zero. Please set a positive"
 					  " value for it, or set uwvFloat: true if weight and buoyancy are equal."

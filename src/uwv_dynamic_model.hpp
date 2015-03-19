@@ -1,15 +1,22 @@
 /***************************************************************************/
-/*  Dynamic model for a underwater vehicle         	                   	   */
+/*  Dynamic model for an underwater vehicle	                           */
 /*                                                                         */
-/* FILE --- uwv_dynamic_model.hpp		                                   */
+/* FILE --- uwv_dynamic_model.cpp	                                   */
 /*                                                                         */
-/* PURPOSE --- Header file for a dynamic model of an	                   */
+/* PURPOSE --- Header file for a Dynamic model of an 	                   */
 /*             underwater vehicle. Based on T.I.Fossen & Giovanni Indiveri */
 /*                                                                         */
 /*  Sankaranarayanan Natarajan                                             */
 /*  sankar.natarajan@dfki.de                                               */
 /*  DFKI - BREMEN 2011                                                     */
+/*                                                                         */
+/*  This file was edited to include the full Fossen Model                  */
+/*                                                                         */
+/*  Bilal Wehbe                                                            */
+/*  bilal.wehbe@dfki.de                                                    */
+/*  DFKI - BREMEN 2015                                                     */
 /***************************************************************************/
+
 #ifndef _UWV_DYNAMIC_MODEL_H_
 #define _UWV_DYNAMIC_MODEL_H_
 
@@ -217,6 +224,7 @@ private:
 	void calcLinDamping(base::Vector6d &linDamping, const base::Vector6d &velocity);
 	void calcQuadDamping(base::Vector6d &quadDamping, const base::Vector6d &velocity);
 	void calcGravityBuoyancy(base::Vector6d &gravitybuoyancy, const Eigen::Vector3d &eulerOrientation);
+        void calcModelCorrection(base::Vector6d &ModelCorrection, const base::Vector6d &velocity);
 
 	/**
 	 * Converts the PWM signal into its equivalent in DC voltage

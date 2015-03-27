@@ -54,12 +54,16 @@ namespace uwv_dynamic_model
 
 		/**
 		 * Coriolis matrices for positive and negative speeds
+		 * OBS: when setting coriolis matrix, make sure to set the added mass matrix
+		 *      to zero and add the added mass terms in the inertia matrix
 		 */
 		base::Matrix6d coriolisMatrixPos;
 		base::Matrix6d coriolisMatrixNeg;
 
 		/**
 		 * Added Mass matrices for positive and negative speeds
+		 * OBS: only set theses matrices if you want to use the complete fossen's model,
+		 * otherwise add the added mass terms in the inertiaMatrix.
 		 */
 		base::Matrix6d AddedMassMatrixPos;
 		base::Matrix6d AddedMassMatrixNeg;
@@ -159,16 +163,16 @@ namespace uwv_dynamic_model
 			inertiaMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
 			coriolisMatrixPos(Eigen::MatrixXd::Zero(6,6)),
 			coriolisMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
-                        AddedMassMatrixPos(Eigen::MatrixXd::Zero(6,6)),
+			AddedMassMatrixPos(Eigen::MatrixXd::Zero(6,6)),
 			AddedMassMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
 			linDampMatrixPos(Eigen::MatrixXd::Zero(6,6)),
 			linDampMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
 			quadDampMatrixPos(Eigen::MatrixXd::Zero(6,6)),
 			quadDampMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
+			LiftCoefficients(Eigen::VectorXd::Zero(4)),
 			thrustConfigMatrix(Eigen::MatrixXd::Zero(6,1)),
 			centerOfBuoyancy(Eigen::VectorXd::Zero(3)),
 			centerOfGravity(Eigen::VectorXd::Zero(3)),
-			LiftCoefficients(Eigen::VectorXd::Zero(4)),
 			uwvMass(0),
 			uwvVolume(0),
 			uwvFloat(false),

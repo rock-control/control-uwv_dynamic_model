@@ -1,7 +1,7 @@
 /***************************************************************************/
-/*  Dynamic model for an underwater vehicle	                           */
+/*  Dynamic model for an underwater vehicle	                               */
 /*                                                                         */
-/* FILE --- uwv_dynamic_model.cpp	                                   */
+/* FILE --- uwv_dynamic_model.hpp	                                       */
 /*                                                                         */
 /* PURPOSE --- Header file for a Dynamic model of an 	                   */
 /*             underwater vehicle. Based on T.I.Fossen & Giovanni Indiveri */
@@ -214,17 +214,20 @@ private:
 	void calcInvInertiaMatrix(base::Matrix6d &invInertiaMatrix, const base::Vector6d &velocity);
 
 	/**
-	 * Functions for calculating the hydrodynamics effects. They consider both positive
-	 * and negative hydrodynamic matrices.
+	 * Functions for calculating the hydrodynamics effects.
 	 */
+
 	void calcCoriolisEffect(base::Vector6d &coriolisEffect, const base::Vector6d &velocity);
-        void calcLiftEffect(base::Vector6d &LiftEffect, const base::Vector6d &velocity);
-        void calcRBCoriolis(base::Vector6d &RBCoriolis, const base::Vector6d &velocity);
-        void calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis, const base::Vector6d &velocity);
+	/* Formulas can be found in [Prestero (1994)]. */
+	void calcLiftEffect(base::Vector6d &LiftEffect, const base::Vector6d &velocity);
+	/* Formulas can be found in [Fossen (1994)]. */
+	void calcRBCoriolis(base::Vector6d &RBCoriolis, const base::Vector6d &velocity);
+	/* Formulas can be found in [Fossen (1994)]. */
+	void calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis, const base::Vector6d &velocity);
 	void calcLinDamping(base::Vector6d &linDamping, const base::Vector6d &velocity);
 	void calcQuadDamping(base::Vector6d &quadDamping, const base::Vector6d &velocity);
 	void calcGravityBuoyancy(base::Vector6d &gravitybuoyancy, const Eigen::Vector3d &eulerOrientation);
-        void calcModelCorrection(base::Vector6d &ModelCorrection, const base::Vector6d &velocity);
+	void calcModelCorrection(base::Vector6d &ModelCorrection, const base::Vector6d &velocity);
 
 	/**
 	 * Converts the PWM signal into its equivalent in DC voltage
@@ -269,7 +272,7 @@ private:
 						   const base::Matrix6d &coriolisMatrixNeg =
 								 Eigen::MatrixXd::Zero(6,6));
 
-         /**
+	/**
 	 * Sets the Added Mass matrices
 	 * @param AddedMassMatrixPos - Added mass matrix for positive velocities
 	 * @param AddedMassMatrixMatrixNeg - Added mass matrix for negative velocities
@@ -279,11 +282,11 @@ private:
 								 Eigen::MatrixXd::Zero(6,6));
 
 
-         /**
+	/**
 	 * Sets the Lift coefficients
 	 * @param LiftCoefficients
 	 */
-         void setLiftCoefficients(const base::Vector4d &LiftCoefficients);
+	void setLiftCoefficients(const base::Vector4d &LiftCoefficients);
 
 	/**
 	 * Sets the Linear Damping matrices

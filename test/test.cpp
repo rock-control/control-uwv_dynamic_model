@@ -407,7 +407,7 @@ BOOST_AUTO_TEST_CASE( wrong_input_size )
 	base::samples::Joints controlInput;
 	controlInput.resize(5);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].raw = 0;
 
 	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == false);
@@ -425,7 +425,7 @@ BOOST_AUTO_TEST_CASE( raw_unset )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].effort = 0;
 
 	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == false);
@@ -445,7 +445,7 @@ BOOST_AUTO_TEST_CASE( pwm_pos_unset )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].raw = 0;
 
 	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == false);
@@ -465,7 +465,7 @@ BOOST_AUTO_TEST_CASE( pwm_neg_unset )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].raw = 0;
 
 	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == false);
@@ -485,7 +485,7 @@ BOOST_AUTO_TEST_CASE( null_thruster_voltage )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].raw = 0;
 
 	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == false);
@@ -510,7 +510,7 @@ BOOST_AUTO_TEST_CASE( wrong_input_size )
 	base::samples::Joints controlInput;
 	controlInput.resize(5);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].speed = 0;
 
 	BOOST_CHECK(vehicle.sendRPMCommands(controlInput) == false);
@@ -528,7 +528,7 @@ BOOST_AUTO_TEST_CASE( speed_unset )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].effort = 0;
 
 	BOOST_CHECK(vehicle.sendRPMCommands(controlInput) == false);
@@ -548,7 +548,7 @@ BOOST_AUTO_TEST_CASE( rpm_pos_unset )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].speed = 0;
 
 	BOOST_CHECK(vehicle.sendRPMCommands(controlInput) == false);
@@ -568,7 +568,7 @@ BOOST_AUTO_TEST_CASE( rpm_neg_unset )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].speed = 0;
 
 	BOOST_CHECK(vehicle.sendRPMCommands(controlInput) == false);
@@ -592,7 +592,7 @@ BOOST_AUTO_TEST_CASE( wrong_input_size )
 	base::samples::Joints controlInput;
 	controlInput.resize(5);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].effort = 0;
 
 	BOOST_CHECK(vehicle.sendEffortCommands(controlInput) == false);
@@ -610,7 +610,7 @@ BOOST_AUTO_TEST_CASE( effort_unset )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].speed = 0;
 
 	BOOST_CHECK(vehicle.sendEffortCommands(controlInput) == false);

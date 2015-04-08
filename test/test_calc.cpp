@@ -17,15 +17,15 @@
  * # ./unit_test --log_level=test_suite
  */
 
-void loadParameters(uwv_dynamic_model::Parameters &parameters);
+void loadParameters(underwaterVehicle::Parameters &parameters);
 
 BOOST_AUTO_TEST_SUITE (CONSTRUCTOR)
 
 
 BOOST_AUTO_TEST_CASE( normal )
 {
-	uwv_dynamic_model::DynamicModel vehicle(4, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(4, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 
@@ -60,38 +60,45 @@ BOOST_AUTO_TEST_SUITE_END()
 
 
 
-void loadParameters(uwv_dynamic_model::Parameters &parameters)
+void loadParameters(underwaterVehicle::Parameters &parameters)
 {
-	parameters.inertiaMatrixPos << 1,   0,   0,   0,   0,    0,
+	parameters.massMatrix << 1,   0,   0,   0,   0,    0,
 			   	   	   	   	   	   0, 	1,   0,   0,   0,    0,
 								   0,   0, 	 1,   0,   0,    0,
 								   0,   0,   0,   1,   0,    0,
 								   0,   0,   0,   0,   1,  	 0,
 								   0,   0,   0,   0,   0, 	 1;
-	parameters.linDampMatrixPos << 1,   0,   0,   0,   0,    0,
+	parameters.linDampMatrix << 1,   0,   0,   0,   0,    0,
 			   	   	   	   	   	   0,   1,   0,   0,   0,    0,
 								   0,   0,   1,   0,   0,    0,
 								   0,   0,   0,   1,   0,    0,
 								   0,   0,   0,   0,   1,  	 0,
 								   0,   0,   0,   0,   0, 	 1;
-	parameters.quadDampMatrixPos << 1,   0,   0,   0,   0,    0,
+	parameters.quadDampMatrix << 1,   0,   0,   0,   0,    0,
 									0,   1,   0,   0,   0,    0,
 									0,   0,   1,   0,   0,    0,
 									0,   0,   0,   1,   0,    0,
 									0,   0,   0,   0,   1,    0,
 									0,   0,   0,   0,   0, 	  1;
 
-	parameters.thrustConfigMatrix.resize(6,4);
-	parameters.thrustConfigMatrix <<   1,   	   	1,   	0,   	0,
+	parameters.thruster_control_matrix.resize(6,4);
+	parameters.thruster_control_matrix <<   1,   	   	1,   	0,   	0,
 			   	   	   	   	   	       0,   		0,   	0,  	 1,
 									   0,   		0,   	1,   	0,
 									   0,   		0,   	0,   	1,
 									   0,   	   	0,   	0,   	0,
 									   0.05,	-0.05,   	0,   	0.015;
-	parameters.thrusterCoeffPWM.positive 	= 1;
-	parameters.thrusterCoeffPWM.negative 	= 1;
-	parameters.thrusterCoeffRPM.positive 	= 1;
-	parameters.thrusterCoeffRPM.negative 	= 1;
-	parameters.thrusterVoltage 	= 1;
+	parameters.thruster_coefficients_pwm.resize(4);
+	parameters.thruster_coefficient_rpm.resize(4);
+	parameters.thrusterVoltage.resize(4);
+
+	for(int i = 0; i < 4; i++)
+	{
+		parameters.thruster_coefficients_pwm[i].positive 	= 1;
+		parameters.thruster_coefficients_pwm[i].negative 	= 1;
+		parameters.thruster_coefficient_rpm[i].positive 	= 1;
+		parameters.thruster_coefficient_rpm[i].negative 	= 1;
+		parameters.thrusterVoltage[i] 	= 1;
+	}
 }
 

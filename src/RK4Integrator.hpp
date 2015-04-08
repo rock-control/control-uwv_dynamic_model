@@ -12,7 +12,7 @@
 
 #include <base/Eigen.hpp>
 
-namespace uwv_dynamic_model
+namespace underwaterVehicle
 {
 class RK4_SIM
 {
@@ -21,7 +21,7 @@ public:
 	/*
 	 * Constructor
 	 */
-	RK4_SIM(uint 		   &controlOrder,
+	RK4_SIM(int 		   &controlOrder,
 			double 			integrationStep);
 
 	/**
@@ -41,6 +41,8 @@ public:
 			const base::Vector6d &velocity,
 			const base::Vector6d &controlInput) = 0;
 
+	void setIntegrationStep(const double integrationStep);
+
 private:
 
 	/**
@@ -56,7 +58,7 @@ private:
 	/**
 	 * Integration step size
 	 */
-	const double gIntegStep;
+	double gIntegStep;
 
 	bool error;
 
@@ -97,7 +99,7 @@ private:
 	 */
 	inline void updateCoefficient(Eigen::VectorXd &k);
 
-	void checkConstruction(uint &controlOrder, double &integrationStep);
+	void checkConstruction(int &controlOrder, double &integrationStep);
 	void checkInputs(Eigen::VectorXd &systemStates,
 					 double &currentTime,
 					 const base::Vector6d &controlInput);

@@ -16,7 +16,7 @@
  * # ./unit_test --log_level=test_suite
  */
 
-void loadParameters(uwv_dynamic_model::Parameters &parameters);
+void loadParameters(underwaterVehicle::Parameters &parameters);
 
 BOOST_AUTO_TEST_SUITE (CONSTRUCTOR)
 
@@ -26,7 +26,7 @@ BOOST_AUTO_TEST_CASE( null_control_order )
 	double samplingTime = 0.2;
 	uint simPerCycle = 8;
 	double initialTime = 1;
-	uwv_dynamic_model::DynamicModel vehicle(controlOrder, samplingTime, simPerCycle, initialTime);
+	underwaterVehicle::DynamicModel vehicle(controlOrder, samplingTime, simPerCycle, initialTime);
 }
 
 BOOST_AUTO_TEST_CASE( negative_sampling_time )
@@ -35,7 +35,7 @@ BOOST_AUTO_TEST_CASE( negative_sampling_time )
 	double samplingTime = -0.2;
 	uint simPerCycle = 8;
 	double initialTime = 1;
-	uwv_dynamic_model::DynamicModel vehicle(controlOrder, samplingTime, simPerCycle, initialTime);
+	underwaterVehicle::DynamicModel vehicle(controlOrder, samplingTime, simPerCycle, initialTime);
 }
 
 BOOST_AUTO_TEST_CASE( null_sampling_time )
@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE( null_sampling_time )
 	double samplingTime = 0;
 	uint simPerCycle = 8;
 	double initialTime = 1;
-	uwv_dynamic_model::DynamicModel vehicle(controlOrder, samplingTime, simPerCycle, initialTime);
+	underwaterVehicle::DynamicModel vehicle(controlOrder, samplingTime, simPerCycle, initialTime);
 }
 
 BOOST_AUTO_TEST_CASE( null_sim_per_cycle )
@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE( null_sim_per_cycle )
 	double samplingTime = 0.2;
 	uint simPerCycle = 0;
 	double initialTime = 1;
-	uwv_dynamic_model::DynamicModel vehicle(controlOrder, samplingTime, simPerCycle, initialTime);
+	underwaterVehicle::DynamicModel vehicle(controlOrder, samplingTime, simPerCycle, initialTime);
 }
 
 BOOST_AUTO_TEST_CASE( negative_initial_time )
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE( negative_initial_time )
 	double samplingTime = 0.2;
 	uint simPerCycle = 8;
 	double initialTime = -1;
-	uwv_dynamic_model::DynamicModel vehicle(controlOrder, samplingTime, simPerCycle, initialTime);
+	underwaterVehicle::DynamicModel vehicle(controlOrder, samplingTime, simPerCycle, initialTime);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -73,8 +73,8 @@ BOOST_AUTO_TEST_SUITE (INITPARAMETERS)
 
 BOOST_AUTO_TEST_CASE( normal )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 
@@ -84,12 +84,12 @@ BOOST_AUTO_TEST_CASE( normal )
 
 BOOST_AUTO_TEST_CASE( unset_inertia_matrix_pos )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.inertiaMatrixPos = Eigen::MatrixXd::Zero(6,6);
+	parameters.massMatrix = Eigen::MatrixXd::Zero(6,6);
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == false);
 
@@ -97,35 +97,35 @@ BOOST_AUTO_TEST_CASE( unset_inertia_matrix_pos )
 
 BOOST_AUTO_TEST_CASE( unset_inertia_matrix_neg )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.inertiaMatrixNeg = Eigen::MatrixXd::Zero(6,6);
+	parameters.massMatrixNeg = Eigen::MatrixXd::Zero(6,6);
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == true);
 
 	vehicle.getUWVParameters(parameters);
-	std::cout << "parameters\n\n" << parameters.inertiaMatrixNeg << std::endl;
+	std::cout << "parameters\n\n" << parameters.massMatrixNeg << std::endl;
 }
 
 BOOST_AUTO_TEST_CASE( unset_coriolis_matrix_pos )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.coriolisMatrixPos = Eigen::MatrixXd::Zero(6,6);
+	parameters.coriolisMatrix = Eigen::MatrixXd::Zero(6,6);
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == true);
 }
 
 BOOST_AUTO_TEST_CASE( unset_coriolis_matrix_neg )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
@@ -139,20 +139,20 @@ BOOST_AUTO_TEST_CASE( unset_coriolis_matrix_neg )
 
 BOOST_AUTO_TEST_CASE( unset_lin_damp_matrix_pos )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.linDampMatrixPos = Eigen::MatrixXd::Zero(6,6);
+	parameters.linDampMatrix = Eigen::MatrixXd::Zero(6,6);
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 }
 
 BOOST_AUTO_TEST_CASE( unset_lin_damp_matrix_neg )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
@@ -166,12 +166,12 @@ BOOST_AUTO_TEST_CASE( unset_lin_damp_matrix_neg )
 
 BOOST_AUTO_TEST_CASE( unset_quad_damp_matrix_pos )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.quadDampMatrixPos = Eigen::MatrixXd::Zero(6,6);
+	parameters.quadDampMatrix = Eigen::MatrixXd::Zero(6,6);
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == true);
 
@@ -179,8 +179,8 @@ BOOST_AUTO_TEST_CASE( unset_quad_damp_matrix_pos )
 
 BOOST_AUTO_TEST_CASE( unset_quad_damp_matrix_neg )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
@@ -194,12 +194,12 @@ BOOST_AUTO_TEST_CASE( unset_quad_damp_matrix_neg )
 
 BOOST_AUTO_TEST_CASE( thrust_config_matrix_rows )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.thrustConfigMatrix = Eigen::MatrixXd::Zero(5,6);
+	parameters.thruster_control_matrix = Eigen::MatrixXd::Zero(5,6);
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -207,12 +207,12 @@ BOOST_AUTO_TEST_CASE( thrust_config_matrix_rows )
 
 BOOST_AUTO_TEST_CASE( thrust_config_matrix_cols )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.thrustConfigMatrix = Eigen::MatrixXd::Zero(6,5);
+	parameters.thruster_control_matrix = Eigen::MatrixXd::Zero(6,5);
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -220,12 +220,12 @@ BOOST_AUTO_TEST_CASE( thrust_config_matrix_cols )
 
 BOOST_AUTO_TEST_CASE( uwv_mass )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.uwvMass = -1;
+	parameters.uwv_mass = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -233,12 +233,12 @@ BOOST_AUTO_TEST_CASE( uwv_mass )
 
 BOOST_AUTO_TEST_CASE( uwv_volume )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.uwvVolume = -1;
+	parameters.uwv_volume = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -246,8 +246,8 @@ BOOST_AUTO_TEST_CASE( uwv_volume )
 
 BOOST_AUTO_TEST_CASE( water_density )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
@@ -259,8 +259,8 @@ BOOST_AUTO_TEST_CASE( water_density )
 
 BOOST_AUTO_TEST_CASE( gravity )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
@@ -272,12 +272,12 @@ BOOST_AUTO_TEST_CASE( gravity )
 
 BOOST_AUTO_TEST_CASE( thruster_voltage )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.thrusterVoltage = -1;
+	parameters.thrusterVoltage[0] = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -285,12 +285,12 @@ BOOST_AUTO_TEST_CASE( thruster_voltage )
 
 BOOST_AUTO_TEST_CASE( thruster_pwm_pos )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.thrusterCoeffPWM.positive = -1;
+	parameters.thruster_coefficients_pwm[5].positive = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -298,12 +298,12 @@ BOOST_AUTO_TEST_CASE( thruster_pwm_pos )
 
 BOOST_AUTO_TEST_CASE( thruster_pwm_neg )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.thrusterCoeffPWM.negative = -1;
+	parameters.thruster_coefficients_pwm[5].negative = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -311,12 +311,14 @@ BOOST_AUTO_TEST_CASE( thruster_pwm_neg )
 
 BOOST_AUTO_TEST_CASE( lin_thruster_pwm_pos )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
+	parameters.linear_thruster_coefficients_pwm.resize(6);
+
 	// Test
-	parameters.linThrusterCoeffPWM.positive = -1;
+	parameters.linear_thruster_coefficients_pwm[5].positive = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -324,12 +326,14 @@ BOOST_AUTO_TEST_CASE( lin_thruster_pwm_pos )
 
 BOOST_AUTO_TEST_CASE( lin_thruster_pwm_neg )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
+	parameters.linear_thruster_coefficients_pwm.resize(6);
+
 	// Test
-	parameters.linThrusterCoeffPWM.negative = -1;
+	parameters.linear_thruster_coefficients_pwm[5].negative = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -337,12 +341,14 @@ BOOST_AUTO_TEST_CASE( lin_thruster_pwm_neg )
 
 BOOST_AUTO_TEST_CASE( quad_thruster_pwm_pos )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
+	parameters.square_thruster_coefficients_pwm.resize(6);
+
 	// Test
-	parameters.quadThrusterCoeffPWM.positive = -1;
+	parameters.square_thruster_coefficients_pwm[5].positive = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -350,12 +356,14 @@ BOOST_AUTO_TEST_CASE( quad_thruster_pwm_pos )
 
 BOOST_AUTO_TEST_CASE( quad_thruster_pwm_neg )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
+	parameters.square_thruster_coefficients_pwm.resize(6);
+
 	// Test
-	parameters.quadThrusterCoeffPWM.negative = -1;
+	parameters.square_thruster_coefficients_pwm[5].negative = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -363,12 +371,12 @@ BOOST_AUTO_TEST_CASE( quad_thruster_pwm_neg )
 
 BOOST_AUTO_TEST_CASE( thruster_rpm_pos )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.thrusterCoeffRPM.positive = -1;
+	parameters.thruster_coefficient_rpm[5].positive = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -376,12 +384,12 @@ BOOST_AUTO_TEST_CASE( thruster_rpm_pos )
 
 BOOST_AUTO_TEST_CASE( thruster_rpm_neg )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	// Test
-	parameters.thrusterCoeffRPM.negative = -1;
+	parameters.thruster_coefficient_rpm[5].negative = -1;
 
 	BOOST_CHECK(vehicle.initParameters(parameters)  == false);
 
@@ -396,10 +404,30 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE (SEND_PWM_COMMANDS)
 
+BOOST_AUTO_TEST_CASE( normal )
+{
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
+	loadParameters(parameters);
+
+	BOOST_CHECK(vehicle.initParameters(parameters) == true);
+
+	base::samples::Joints controlInput;
+	controlInput.resize(6);
+
+	for(uint i = 0; i < controlInput.size(); i++)
+		controlInput[i].raw = 1;
+
+	std::cout << "size: " << parameters.linear_thruster_coefficients_pwm.size() << std::endl;
+
+	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == true);
+
+}
+
 BOOST_AUTO_TEST_CASE( wrong_input_size )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
@@ -407,7 +435,7 @@ BOOST_AUTO_TEST_CASE( wrong_input_size )
 	base::samples::Joints controlInput;
 	controlInput.resize(5);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].raw = 0;
 
 	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == false);
@@ -416,8 +444,8 @@ BOOST_AUTO_TEST_CASE( wrong_input_size )
 
 BOOST_AUTO_TEST_CASE( raw_unset )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
@@ -425,7 +453,7 @@ BOOST_AUTO_TEST_CASE( raw_unset )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].effort = 0;
 
 	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == false);
@@ -434,18 +462,18 @@ BOOST_AUTO_TEST_CASE( raw_unset )
 
 BOOST_AUTO_TEST_CASE( pwm_pos_unset )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
-	parameters.thrusterCoeffPWM.positive = 0;
+	parameters.thruster_coefficients_pwm[0].positive = 0;
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
 
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].raw = 0;
 
 	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == false);
@@ -454,18 +482,18 @@ BOOST_AUTO_TEST_CASE( pwm_pos_unset )
 
 BOOST_AUTO_TEST_CASE( pwm_neg_unset )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
-	parameters.thrusterCoeffPWM.negative = 0;
+	parameters.thruster_coefficients_pwm[0].negative = 0;
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
 
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].raw = 0;
 
 	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == false);
@@ -474,18 +502,18 @@ BOOST_AUTO_TEST_CASE( pwm_neg_unset )
 
 BOOST_AUTO_TEST_CASE( null_thruster_voltage )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
-	parameters.thrusterVoltage = 0;
+	parameters.thrusterVoltage[0] = 0;
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
 
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].raw = 0;
 
 	BOOST_CHECK(vehicle.sendPWMCommands(controlInput) == false);
@@ -501,8 +529,8 @@ BOOST_AUTO_TEST_SUITE (SEND_RPM_COMMANDS)
 
 BOOST_AUTO_TEST_CASE( wrong_input_size )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
@@ -510,7 +538,7 @@ BOOST_AUTO_TEST_CASE( wrong_input_size )
 	base::samples::Joints controlInput;
 	controlInput.resize(5);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].speed = 0;
 
 	BOOST_CHECK(vehicle.sendRPMCommands(controlInput) == false);
@@ -519,8 +547,8 @@ BOOST_AUTO_TEST_CASE( wrong_input_size )
 
 BOOST_AUTO_TEST_CASE( speed_unset )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
@@ -528,7 +556,7 @@ BOOST_AUTO_TEST_CASE( speed_unset )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].effort = 0;
 
 	BOOST_CHECK(vehicle.sendRPMCommands(controlInput) == false);
@@ -537,18 +565,18 @@ BOOST_AUTO_TEST_CASE( speed_unset )
 
 BOOST_AUTO_TEST_CASE( rpm_pos_unset )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
-	parameters.thrusterCoeffRPM.positive = 0;
+	parameters.thruster_coefficient_rpm[0].positive = 0;
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
 
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].speed = 0;
 
 	BOOST_CHECK(vehicle.sendRPMCommands(controlInput) == false);
@@ -557,18 +585,18 @@ BOOST_AUTO_TEST_CASE( rpm_pos_unset )
 
 BOOST_AUTO_TEST_CASE( rpm_neg_unset )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
-	parameters.thrusterCoeffRPM.negative = 0;
+	parameters.thruster_coefficient_rpm[0].negative = 0;
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
 
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].speed = 0;
 
 	BOOST_CHECK(vehicle.sendRPMCommands(controlInput) == false);
@@ -583,8 +611,8 @@ BOOST_AUTO_TEST_SUITE (SEND_EFFORT_COMMANDS)
 
 BOOST_AUTO_TEST_CASE( wrong_input_size )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
@@ -592,7 +620,7 @@ BOOST_AUTO_TEST_CASE( wrong_input_size )
 	base::samples::Joints controlInput;
 	controlInput.resize(5);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].effort = 0;
 
 	BOOST_CHECK(vehicle.sendEffortCommands(controlInput) == false);
@@ -601,8 +629,8 @@ BOOST_AUTO_TEST_CASE( wrong_input_size )
 
 BOOST_AUTO_TEST_CASE( effort_unset )
 {
-	uwv_dynamic_model::DynamicModel vehicle(6, 0.2, 8, 1);
-	uwv_dynamic_model::Parameters parameters;
+	underwaterVehicle::DynamicModel vehicle(6, 0.2, 8, 1);
+	underwaterVehicle::Parameters parameters;
 	loadParameters(parameters);
 
 	BOOST_CHECK(vehicle.initParameters(parameters) == true);
@@ -610,7 +638,7 @@ BOOST_AUTO_TEST_CASE( effort_unset )
 	base::samples::Joints controlInput;
 	controlInput.resize(6);
 
-	for(int i = 0; i < controlInput.size(); i++)
+	for(uint i = 0; i < controlInput.size(); i++)
 		controlInput[i].speed = 0;
 
 	BOOST_CHECK(vehicle.sendEffortCommands(controlInput) == false);
@@ -624,17 +652,25 @@ BOOST_AUTO_TEST_SUITE_END()
 
 
 
-void loadParameters(uwv_dynamic_model::Parameters &parameters)
+void loadParameters(underwaterVehicle::Parameters &parameters)
 {
-	parameters.inertiaMatrixPos 	= Eigen::MatrixXd::Identity(6,6);
-	parameters.coriolisMatrixPos 	= Eigen::MatrixXd::Identity(6,6);
-	parameters.linDampMatrixPos 	= Eigen::MatrixXd::Identity(6,6);
-	parameters.quadDampMatrixPos 	= Eigen::MatrixXd::Identity(6,6);
-	parameters.thrustConfigMatrix 	= Eigen::MatrixXd::Identity(6,6);
-	parameters.thrusterCoeffPWM.positive 	= 1;
-	parameters.thrusterCoeffPWM.negative 	= 1;
-	parameters.thrusterCoeffRPM.positive 	= 1;
-	parameters.thrusterCoeffRPM.negative 	= 1;
-	parameters.thrusterVoltage 	= 1;
+	parameters.massMatrix 				= Eigen::MatrixXd::Identity(6,6);
+	parameters.coriolisMatrix 			= Eigen::MatrixXd::Identity(6,6);
+	parameters.linDampMatrix 			= Eigen::MatrixXd::Identity(6,6);
+	parameters.quadDampMatrix 			= Eigen::MatrixXd::Identity(6,6);
+	parameters.thruster_control_matrix 	= Eigen::MatrixXd::Identity(6,6);
+
+	parameters.thruster_coefficients_pwm.resize(6);
+	parameters.thruster_coefficient_rpm.resize(6);
+	parameters.thrusterVoltage.resize(6);
+
+	for(int i = 0; i < 6; i++)
+	{
+		parameters.thruster_coefficients_pwm[i].positive 	= 1;
+		parameters.thruster_coefficients_pwm[i].negative 	= 1;
+		parameters.thruster_coefficient_rpm[i].positive 	= 1;
+		parameters.thruster_coefficient_rpm[i].negative 	= 1;
+		parameters.thrusterVoltage[i] 	= 1;
+	}
 }
 

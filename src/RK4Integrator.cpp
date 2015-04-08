@@ -25,9 +25,9 @@
 #include <math.h>
 #include <base/Logging.hpp>
 
-namespace uwv_dynamic_model
+namespace underwaterVehicle
 {
-RK4_SIM::RK4_SIM(uint &controlOrder, double integrationStep)
+RK4_SIM::RK4_SIM(int &controlOrder, double integrationStep)
 :   gControlOrder(controlOrder),
     gSystemOrder(12),
     gIntegStep(integrationStep)
@@ -140,12 +140,34 @@ void RK4_SIM::updateCoefficient(Eigen::VectorXd &k)
 		k[i] = gIntegStep * k[i];
 }
 
-void RK4_SIM::checkConstruction(uint &controlOrder, double &integrationStep)
+void RK4_SIM::setIntegrationStep(const double integrationStep)
+{
+	bool checkError = false;
+	std::string textElement;
+
+	if (integrationStep > 0)
+		gIntegStep = integrationStep;
+	else
+	{
+		textElement = "integration step";
+		checkError = true;
+	}
+
+	if(checkError)
+	{
+		LOG_ERROR("\n\n\x1b[31m (Library: RK4Integrator.cpp)"
+				  " The %s should be greater than zero.\x1b[0m\n\n",
+					textElement.c_str());
+		error = true;
+	}
+}
+
+void RK4_SIM::checkConstruction(int &controlOrder, double &integrationStep)
 {
 	std::string textElement;
 	bool checkError = false;
 
-	if (controlOrder == 0)
+	if (controlOrder <= 0)
 	{
 		textElement = "control order";
 		checkError = true;

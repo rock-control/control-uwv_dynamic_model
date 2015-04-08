@@ -17,23 +17,24 @@
 #include "RK4Integrator.hpp"
 #include "uwv_dataTypes.hpp"
 #include "base/samples/Joints.hpp"
+#include "base/samples/RigidBodyState.hpp"
 #include "base/Pose.hpp"
 
 
-namespace uwv_dynamic_model
+namespace underwaterVehicle
 {
 class DynamicModel : public RK4_SIM
 {
 
 public:
-	DynamicModel(uint controlOrder, double samplingTime = 0.01,
-				 uint simPerCycle = 10, double initialTime = 0.0);
+	DynamicModel(int controlOrder, double samplingTime = 0.01,
+				 int simPerCycle = 10, double initialTime = 0.0);
 
 	/**
 	 * Initializes the model parameters. Run this function before sending control
 	 * commands to the model.
 	 */
-	bool initParameters(const uwv_dynamic_model::Parameters &uwvParameters);
+	bool initParameters(const underwaterVehicle::Parameters &uwvParameters);
 
 	/**
 	 * Function for sending PWM commands to the model.
@@ -57,7 +58,7 @@ public:
 	 * Sets the general UWV parameters
 	 * @param uwvParamaters - Structures containing the uwv parameters
 	 */
-	bool setUWVParameters(const uwv_dynamic_model::Parameters &uwvParameters);
+	bool setUWVParameters(const underwaterVehicle::Parameters &uwvParameters);
 
 	/**
 	 * Resets position, orientation and velocities of the model
@@ -65,10 +66,46 @@ public:
 	void resetStates(void);
 
 	/**
+	 * Sets the current position of the vehicle
+	 * * @param position - New position value
+	 */
+	void setPosition(const base::Vector3d &position);
+
+	/**
+	 * Sets the current orientation of the vehicle
+	 * * @param quatOrientation - New orientation value
+	 */
+	void setOrientation(const Eigen::Quaterniond &quatOrientation);
+
+	/**
+	 * Sets the current linear velocity of the vehicle
+	 * * @param linearVelocity - New linear velocity value
+	 */
+	void setLinearVelocity(const base::Vector3d &linearVelocity);
+
+	/**
+	 * Sets the current angular velocity of the vehicle
+	 * * @param angularVelocity - New angular velocity value
+	 */
+	void setAngularVelocity(const base::Vector3d &angularVelocity);
+
+	/**
+	 * Sets the samling time
+	 * * @param samplingTime - New sampling time value
+	 */
+	void setSamplingTime(const double samplingTime);
+
+	/**
+	 * Sets the thruster voltage used for PWM commands
+	 * * @param thrusterVoltage - New thruster voltage value
+	 */
+	void setThrusterVoltage(const std::vector<double> &thrusterVoltage);
+
+	/**
 	 * Gets the underwater vehicle parameters
 	 * @param uwvParameters - Underwater vehicle parameters
 	 */
-	void getUWVParameters(uwv_dynamic_model::Parameters &uwvParameters);
+	void getUWVParameters(underwaterVehicle::Parameters &uwvParameters);
 
 	/**
 	 * Gets the position
@@ -80,7 +117,7 @@ public:
 	 * Gets the euler orientation
 	 * @param eulerOrientation - Euler orientation vector
 	 */
-	void getEulerOrientation(Eigen::Vector3d &eulerOrientation);
+	void getEulerOrientation(base::Vector3d &eulerOrientation);
 
 	/**
 	 * Gets the quaternion orientation
@@ -148,7 +185,7 @@ public:
 	 * @param eulerAngles - Euler angles vector
 	 */
 	static void eulerToQuaternion(base::Quaterniond &quaternion,
-						   const Eigen::Vector3d &eulerAngles);
+						   const base::Vector3d &eulerAngles);
 
 	/**
 	 * Converts the Body-Frame coordinates into World-Frame coordinates.
@@ -182,6 +219,26 @@ public:
 	static void calcTransfMatrix(base::Matrix6d &transfMatrix,
 								 const base::Vector3d &eulerAngles);
 
+/**
+ * FUNCTIONS FOR BACKWARDS COMPABILITY
+ */
+
+	DynamicModel(double samplingTime = 0.01, int simPerCycle = 10,
+				 double initialTime = 0.0, double *_initial_state = NULL,
+				 int _plant_order=12 ,int controlOrder=5);
+	void init_param(underwaterVehicle::Parameters _param);
+	void setPWMLevels(base::samples::Joints thrusters);
+	void setRPMLevels(base::samples::Joints thrusters);
+	Eigen::Vector3d getPosition(void);
+	Eigen::Vector3d getLinearVelocity(void);
+	Eigen::Vector3d getAcceleration(void);
+	Eigen::Quaterniond getOrientation_in_Quat(void);
+	Eigen::Vector3d getOrientation_in_Euler(void);
+	Eigen::Vector3d getAngularVelocity(void);
+	void setSamplingtime(const double samplingTime);
+
+
+
 protected:
 
 	/**
@@ -201,6 +258,12 @@ protected:
 private:
 
 	/**
+	 *	Initializes the class parameters. Necessary for allowing backwards compability.
+	 */
+	void iniatilizeClass(int controlOrder, double samplingTime = 0.01,
+				 	 	 int simPerCycle = 10, double initialTime = 0.0);
+
+	/**
 	 * Calculates the inverse of the inertia matrix. It considers both positive and negative
 	 * inertia matrices.
 	 */
@@ -213,7 +276,7 @@ private:
 	void calcCoriolisEffect(base::Vector6d &coriolisEffect, const base::Vector6d &velocity);
 	void calcLinDamping(base::Vector6d &linDamping, const base::Vector6d &velocity);
 	void calcQuadDamping(base::Vector6d &quadDamping, const base::Vector6d &velocity);
-	void calcGravityBuoyancy(base::Vector6d &gravitybuoyancy, const Eigen::Vector3d &eulerOrientation);
+	void calcGravityBuoyancy(base::Vector6d &gravitybuoyancy, const base::Vector3d &eulerOrientation);
 
 	/**
 	 * Converts the PWM signal into its equivalent in DC voltage
@@ -283,12 +346,12 @@ private:
 	/**
 	 * Checks if the variables provided in the class construction are valid
 	 */
-	void checkConstruction(double &samplingTime, uint &simPerCycle, double &initialTime);
+	void checkConstruction(int &controlOrder, double &samplingTime, int &simPerCycle, double &initialTime);
 
 	/**
 	 * Determinant of inertiaMatrix must be different from zero
 	 */
-	void checkParameters(const uwv_dynamic_model::Parameters &pwvParameters);
+	void checkParameters(const underwaterVehicle::Parameters &pwvParameters);
 
 	/**
 	 * Checks if the positive matrices were set.
@@ -311,6 +374,11 @@ private:
 	void checkPWMCoefficients(void);
 
 	/**
+	 * Checks if the new thruster voltage value is valid
+	 */
+	void checkThrusterVoltage(const std::vector<double> &thrusterVoltage);
+
+	/**
 	 * Checks if the RPM coefficients were set
 	 */
 	void checkRPMCoefficients(void);
@@ -328,20 +396,20 @@ private:
 	/**
 	 * Pose variables
 	 */
-	Eigen::Vector3d gPosition;
-	Eigen::Vector3d gEulerOrientation;
+	base::Vector3d gPosition;
+	base::Vector3d gEulerOrientation;
 
 	/**
 	 * Velocity variables
 	 */
-	Eigen::Vector3d gLinearVelocity;
-	Eigen::Vector3d gAngularVelocity;
+	base::Vector3d gLinearVelocity;
+	base::Vector3d gAngularVelocity;
 
 	/**
 	 * Acceleration variables
 	 */
-	Eigen::Vector3d gLinearAcceleration;
-	Eigen::Vector3d gAngularAcceleration;
+	base::Vector3d gLinearAcceleration;
+	base::Vector3d gAngularAcceleration;
 
 	/**
 	 * Vector with forces and moments applied to the vehicle
@@ -412,11 +480,11 @@ private:
 	/**
 	 * Thrusters' coefficients for PWM and RPM
 	 */
-	Direction gThrusterCoeffPWM;
-	Direction gLinThrusterCoeffPWM;
-	Direction gQuadThrusterCoeffPWM;
-	Direction gThrusterCoeffRPM;
-	double gThrusterVoltage;
+	std::vector<Direction> gThrusterCoeffPWM;
+	std::vector<Direction> gLinThrusterCoeffPWM;
+	std::vector<Direction> gQuadThrusterCoeffPWM;
+	std::vector<Direction> gThrusterCoeffRPM;
+	std::vector<double>    gThrusterVoltage;
 
 
 /**
@@ -452,6 +520,15 @@ private:
 	bool errorPWMCoeff;
 	bool errorRPMCoeff;
 	bool errorStatus;
+
+/**
+ * BACKWARDS COMPABILITY
+ */
+
+	/**
+	 * Prints the deprecated warn.
+	 */
+	void deprecatedWarn(std::string oldFunctionName, std::string oldFunction, std::string newFunction);
 };
 };
 #endif

@@ -1,15 +1,15 @@
-/***************************************************************************/
-/*  Data types for an underwater vehicle 	                           */
-/*                                                                         */
-/* FILE --- uwv_dataTypes.h		                                   */
-/*                                                                         */
-/* PURPOSE --- Header file for a data types used in modeling a 		   */
-/*             underwater vehicle. 					   */
-/*                                                                         */
-/*  Sankaranarayanan Natarajan                                             */
-/*  sankar.natarajan@dfki.de                                               */
-/*  DFKI - BREMEN 2011                                                     */
-/***************************************************************************/
+/****************************************************************************/
+/*  Data types for an underwater vehicle 	                           	   	*/
+/*                                                                         	*/
+/* FILE --- uwv_dataTypes.h		                                   		   	*/
+/*                                                                         	*/
+/* PURPOSE --- Header file for a data types used in modeling a 		   		*/
+/*             underwater vehicle. 					   						*/
+/*                                                                         	*/
+/*  Sankaranarayanan Natarajan                                             	*/
+/*  sankar.natarajan@dfki.de                                               	*/
+/*  DFKI - BREMEN 2011                                                     	*/
+/****************************************************************************/
 #ifndef _UWV_DATATYPES_H_
 #define _UWV_DATATYPES_H_
 
@@ -55,9 +55,19 @@ namespace underwaterVehicle
 
 		/**
 		 * Coriolis matrices for positive and negative speeds
+		 * OBS: when setting coriolis matrix, make sure to set the added mass matrix
+		 *      to zero and add the added mass terms in the inertia matrix
 		 */
 		base::Matrix6d coriolisMatrix;
 		base::Matrix6d coriolisMatrixNeg;
+
+		/**
+		 * Added Mass matrices for positive and negative speeds
+		 * OBS: only set theses matrices if you want to use the complete fossen's model,
+		 * otherwise add the added mass terms in the inertiaMatrix.
+		 */
+		base::Matrix6d AddedMassMatrixPos;
+		base::Matrix6d AddedMassMatrixNeg;
 
 		/**
 		 * Linear damping matrices for positive and negative speeds
@@ -70,6 +80,11 @@ namespace underwaterVehicle
 		 */
 		base::Matrix6d quadDampMatrix;
 		base::Matrix6d quadDampMatrixNeg;
+
+		/**
+		 * Lift coefficients (Yuv, Zuw, Muw, Nuv)
+		 */
+		base::Vector4d LiftCoefficients;
 
 		/**
 		 * Thrust configuration matrix
@@ -149,10 +164,13 @@ namespace underwaterVehicle
 			massMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
 			coriolisMatrix(Eigen::MatrixXd::Zero(6,6)),
 			coriolisMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
+			AddedMassMatrixPos(Eigen::MatrixXd::Zero(6,6)),
+			AddedMassMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
 			linDampMatrix(Eigen::MatrixXd::Zero(6,6)),
 			linDampMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
 			quadDampMatrix(Eigen::MatrixXd::Zero(6,6)),
 			quadDampMatrixNeg(Eigen::MatrixXd::Zero(6,6)),
+			LiftCoefficients(Eigen::VectorXd::Zero(4)),
 			thruster_control_matrix(Eigen::MatrixXd::Zero(6,1)),
 			distance_body2centerofbuoyancy(Eigen::VectorXd::Zero(3)),
 			distance_body2centerofgravity(Eigen::VectorXd::Zero(3)),

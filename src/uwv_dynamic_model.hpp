@@ -1,15 +1,22 @@
 /***************************************************************************/
-/*  Dynamic model for a underwater vehicle         	                   	   */
+/*  Dynamic model for an underwater vehicle	                               */
 /*                                                                         */
-/* FILE --- uwv_dynamic_model.hpp		                                   */
+/* FILE --- uwv_dynamic_model.hpp	                                       */
 /*                                                                         */
-/* PURPOSE --- Header file for a dynamic model of an	                   */
+/* PURPOSE --- Header file for a Dynamic model of an 	                   */
 /*             underwater vehicle. Based on T.I.Fossen & Giovanni Indiveri */
 /*                                                                         */
 /*  Sankaranarayanan Natarajan                                             */
 /*  sankar.natarajan@dfki.de                                               */
 /*  DFKI - BREMEN 2011                                                     */
+/*                                                                         */
+/*  This file was edited to include the full Fossen Model                  */
+/*                                                                         */
+/*  Bilal Wehbe                                                            */
+/*  bilal.wehbe@dfki.de                                                    */
+/*  DFKI - BREMEN 2015                                                     */
 /***************************************************************************/
+
 #ifndef _UWV_DYNAMIC_MODEL_H_
 #define _UWV_DYNAMIC_MODEL_H_
 
@@ -270,13 +277,20 @@ private:
 	void calcInvInertiaMatrix(base::Matrix6d &invInertiaMatrix, const base::Vector6d &velocity);
 
 	/**
-	 * Functions for calculating the hydrodynamics effects. They consider both positive
-	 * and negative hydrodynamic matrices.
+	 * Functions for calculating the hydrodynamics effects.
 	 */
+
 	void calcCoriolisEffect(base::Vector6d &coriolisEffect, const base::Vector6d &velocity);
+	/* Formulas can be found in [Prestero (1994)]. */
+	void calcLiftEffect(base::Vector6d &LiftEffect, const base::Vector6d &velocity);
+	/* Formulas can be found in [Fossen (1994)]. */
+	void calcRBCoriolis(base::Vector6d &RBCoriolis, const base::Vector6d &velocity);
+	/* Formulas can be found in [Fossen (1994)]. */
+	void calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis, const base::Vector6d &velocity);
 	void calcLinDamping(base::Vector6d &linDamping, const base::Vector6d &velocity);
 	void calcQuadDamping(base::Vector6d &quadDamping, const base::Vector6d &velocity);
 	void calcGravityBuoyancy(base::Vector6d &gravitybuoyancy, const base::Vector3d &eulerOrientation);
+	void calcModelCorrection(base::Vector6d &ModelCorrection, const base::Vector6d &velocity);
 
 	/**
 	 * Converts the PWM signal into its equivalent in DC voltage
@@ -320,6 +334,22 @@ private:
 	void setCoriolisMatrix(const base::Matrix6d &coriolisMatrixPos,
 						   const base::Matrix6d &coriolisMatrixNeg =
 								 Eigen::MatrixXd::Zero(6,6));
+
+	/**
+	 * Sets the Added Mass matrices
+	 * @param AddedMassMatrixPos - Added mass matrix for positive velocities
+	 * @param AddedMassMatrixMatrixNeg - Added mass matrix for negative velocities
+	 */
+	void setAddedMassMatrix(const base::Matrix6d &AddedMassMatrixPos,
+						   const base::Matrix6d &AddedMassMatrixNeg =
+								 Eigen::MatrixXd::Zero(6,6));
+
+
+	/**
+	 * Sets the Lift coefficients
+	 * @param LiftCoefficients
+	 */
+	void setLiftCoefficients(const base::Vector4d &LiftCoefficients);
 
 	/**
 	 * Sets the Linear Damping matrices
@@ -461,6 +491,12 @@ private:
 	base::Matrix6d gCoriolisMatrixNeg;
 
 	/**
+	 * Coriolis matrices for positive and negative speeds
+	 */
+	base::Matrix6d gAddedMassMatrixPos;
+	base::Matrix6d gAddedMassMatrixNeg;
+
+	/**
 	 * Linear damping matrices for positive and negative speeds
 	 */
 	base::Matrix6d gLinDampMatrixPos;
@@ -476,6 +512,11 @@ private:
 	 * Thrust configuration matrix
 	 */
 	Eigen::MatrixXd gThrustConfigMatrix;
+
+	/**
+	 * Lift coefficients
+	 */
+	Eigen::Vector4d gLiftCoefficients;
 
 	/**
 	 * Thrusters' coefficients for PWM and RPM

@@ -1389,15 +1389,15 @@ void DynamicModel::checkRPMCoefficients(void)
 	bool sizeError 		= false;
 	bool checkError 	= false;
 
-	/* Checking if none of the PWM coefficients vector was set */
+	/* Checking if none of the RPM coefficients vector was set */
 	if(gThrusterCoeffRPM.size()	== 0)
 		nullSizeError = true;
 
-	/* Checking if the PWM coefficients that were set have a size equal to the control order */
-	if(gThrusterCoeffRPM.size() != 0 && (int)gThrusterCoeffPWM.size() != gControlOrder)
+	/* Checking if the RPM coefficients that were set have a size equal to the control order */
+	if(gThrusterCoeffRPM.size() != 0 && (int)gThrusterCoeffRPM.size() != gControlOrder)
 	{
 		textElement = "thruster_coefficient_rpm";
-		size = gLinThrusterCoeffPWM.size();
+		size = gThrusterCoeffRPM.size();
 		sizeError = true;
 	}
 
@@ -1443,7 +1443,7 @@ void DynamicModel::checkRPMCoefficients(void)
 	}
 
 
-	if(checkError && !errorPWMCoeff)
+	if(checkError && !errorRPMCoeff)
 	{
 		LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
 				  " The %s coefficient of the thruster %i was not set.\x1b[0m\n\n",
@@ -1564,7 +1564,7 @@ void DynamicModel::setPWMLevels(base::samples::Joints thrusters)
 
 void DynamicModel::setRPMLevels(base::samples::Joints thrusters)
 {
-	sendPWMCommands(thrusters);
+	sendRPMCommands(thrusters);
 
 	std::string oldFunction = "DynamicModel::setRPMLevels(base::samples::Joints thrusters)";
 

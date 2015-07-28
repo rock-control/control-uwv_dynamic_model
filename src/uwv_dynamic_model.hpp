@@ -136,13 +136,13 @@ public:
 	 * Gets the linear velocity
 	 * @param linearVelocity - Linear velocity vector
 	 */
-	void getLinearVelocity(base::Vector3d &linearVelocity);
+	void getLinearVelocity(base::Vector3d &linearVelocity, bool worldFrame = true);
 
 	/**
 	 * Gets the angular velocity
 	 * @param angularVelocity - Angular velocity vector
 	 */
-	void getAngularVelocity(base::Vector3d &angularVelocity);
+	void getAngularVelocity(base::Vector3d &angularVelocity, bool worldFrame = true);
 
 	/**
 	 * Gets the linear acceleration

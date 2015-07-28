@@ -20,8 +20,6 @@
 
 #include "uwv_dynamic_model.hpp"
 #include <base/Logging.hpp>
-#include <iostream>
-#include <eigen3/Eigen/Dense>
 
 namespace underwaterVehicle
 {
@@ -467,14 +465,46 @@ void DynamicModel::getQuatOrienration(base::Orientation &quatOrientation)
 	eulerToQuaternion(quatOrientation, gEulerOrientation);
 }
 
-void DynamicModel::getLinearVelocity(base::Vector3d &linearVelocity)
+void DynamicModel::getLinearVelocity(base::Vector3d &linearVelocity, bool worldFrame)
 {
-	linearVelocity = gLinearVelocity;
+	if(worldFrame)
+	{
+		// Body to world frame convertion
+		base::Vector6d bodyVelocity;
+		base::Vector6d worldVelocity;
+
+		bodyVelocity.head(3) = gLinearVelocity;
+		bodyVelocity.tail(3) = gAngularVelocity;
+
+		convBodyToWorld(worldVelocity, bodyVelocity, gEulerOrientation);
+
+		linearVelocity = worldVelocity.head(3);
+	}
+	else
+	{
+		linearVelocity = gLinearVelocity;
+	}
 }
 
-void DynamicModel::getAngularVelocity(base::Vector3d &angularVelocity)
+void DynamicModel::getAngularVelocity(base::Vector3d &angularVelocity, bool worldFrame)
 {
-	angularVelocity = gAngularVelocity;
+	if(worldFrame)
+	{
+		// Body to world frame convertion
+		base::Vector6d bodyVelocity;
+		base::Vector6d worldVelocity;
+
+		bodyVelocity.head(3) = gLinearVelocity;
+		bodyVelocity.tail(3) = gAngularVelocity;
+
+		convBodyToWorld(worldVelocity, bodyVelocity, gEulerOrientation);
+
+		angularVelocity = worldVelocity.tail(3);
+	}
+	else
+	{
+		angularVelocity = gAngularVelocity;
+	}
 }
 
 void DynamicModel::getLinearAcceleration(base::Vector3d &linearAcceleration)

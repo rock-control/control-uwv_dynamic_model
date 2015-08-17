@@ -734,6 +734,7 @@ void DynamicModel::calcGravityBuoyancy(base::Vector6d &gravitybuoyancy,
 	if (gUWVFloat == true)
 		gWeight = gBuoyancy;
 
+	// In Fossen(1994) the z-axis is taken to be positive downwards (pag 47)
 	gravitybuoyancy(0) 	= 	(gWeight - gBuoyancy) * sin(e2);
 	gravitybuoyancy(1) 	=  -(gWeight - gBuoyancy) * (cos(e2)*sin(e1));
 	gravitybuoyancy(2) 	=  -(gWeight - gBuoyancy) * (cos(e2)*cos(e1));
@@ -743,6 +744,8 @@ void DynamicModel::calcGravityBuoyancy(base::Vector6d &gravitybuoyancy,
 			((xg*gWeight - xb*gBuoyancy)*cos(e2)*cos(e1));
 	gravitybuoyancy(5) 	=  -((xg*gWeight - xb*gWeight)*cos(e2)*sin(e1)) -
 			((yg*gWeight - yb*gBuoyancy)* sin(e2));
+	// Converting to the common representation in Rock, z-axis positive upwards
+	gravitybuoyancy = -gravitybuoyancy;
 
 }
 

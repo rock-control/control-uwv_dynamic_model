@@ -765,18 +765,15 @@ void DynamicModel::calcGravityBuoyancy(base::Vector6d &gravitybuoyancy,
 		gWeight = gBuoyancy;
 
 	// In Fossen(1994) the z-axis is taken to be positive downwards (pag 47)
-	gravitybuoyancy(0) 	= 	(gWeight - gBuoyancy) * sin(e2);
-	gravitybuoyancy(1) 	=  -(gWeight - gBuoyancy) * (cos(e2)*sin(e1));
-	gravitybuoyancy(2) 	=  -(gWeight - gBuoyancy) * (cos(e2)*cos(e1));
-	gravitybuoyancy(3) 	=  -((yg*gWeight - yb*gWeight)*cos(e2)*cos(e1)) +
+	gravitybuoyancy(0) 	= 	-(gWeight - gBuoyancy) * sin(e2);
+	gravitybuoyancy(1) 	=  (gWeight - gBuoyancy) * (cos(e2)*sin(e1));
+	gravitybuoyancy(2) 	=  (gWeight - gBuoyancy) * (cos(e2)*cos(e1));
+	gravitybuoyancy(3) 	=  ((yg*gWeight - yb*gWeight)*cos(e2)*cos(e1)) -
 			((zg*gWeight - zb*gBuoyancy) * cos(e2)*sin(e1));
-	gravitybuoyancy(4) 	=   ((zg*gWeight - zb*gWeight)*sin(e2)) +
+	gravitybuoyancy(4) 	=   -((zg*gWeight - zb*gWeight)*sin(e2)) -
 			((xg*gWeight - xb*gBuoyancy)*cos(e2)*cos(e1));
-	gravitybuoyancy(5) 	=  -((xg*gWeight - xb*gWeight)*cos(e2)*sin(e1)) -
+	gravitybuoyancy(5) 	=  ((xg*gWeight - xb*gWeight)*cos(e2)*sin(e1)) +
 			((yg*gWeight - yb*gBuoyancy)* sin(e2));
-	// Converting to the common representation in Rock, z-axis positive upwards
-	gravitybuoyancy = -gravitybuoyancy;
-
 }
 
 void DynamicModel::convBodyToWorld(base::Vector6d &worldCoordinates,

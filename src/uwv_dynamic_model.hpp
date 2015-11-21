@@ -526,24 +526,10 @@ private:
      * RESTORING FORCES PARAMETERS
      */
 
-    /**
-     * Total weight force of the vehicle
-     */
     double gWeight;
-
-    /**
-     * Total buoyancy force of the vehicle
-     */
     double gBuoyancy;
-
     base::Vector3d gCenterOfGravity;
     base::Vector3d gCenterOfBuoyancy;
-    bool gUWVFloat;
-    double gUWVMass;
-    double gUWVVolume;
-    double gGravity;
-    double gWaterDensity;
-
 
     /**
      * ERROR VARIABLES

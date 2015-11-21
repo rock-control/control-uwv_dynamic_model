@@ -78,11 +78,6 @@ void DynamicModel::iniatilizeClass(int controlOrder, double samplingTime,
         gBuoyancy = 0;
         gCenterOfGravity = Eigen::VectorXd::Zero(3);
         gCenterOfBuoyancy = Eigen::VectorXd::Zero(3);
-        gUWVFloat = false;
-        gUWVMass = 0;
-        gUWVVolume = 0;
-        gGravity = 0;
-        gWaterDensity = 0;
     }
 }
 
@@ -337,18 +332,12 @@ bool DynamicModel::setUWVParameters(const underwaterVehicle::Parameters &uwvPara
             gThrusterCoeffRPM           = uwvParameters.thruster_coefficient_rpm;
             gThrusterVoltage            = uwvParameters.thrusterVoltage;
 
-            gWeight                     = uwvParameters.uwv_mass*uwvParameters.gravity;
-            gBuoyancy                   = uwvParameters.waterDensity*uwvParameters.gravity*
-                                          uwvParameters.uwv_volume;
+            gWeight                     = uwvParameters.weight;
+            gBuoyancy                   = uwvParameters.buoyancy;
 
             gCenterOfGravity  	= uwvParameters.distance_body2centerofgravity;
             gCenterOfBuoyancy 	= uwvParameters.distance_body2centerofbuoyancy;
 
-            gUWVFloat           = uwvParameters.uwv_float;
-            gUWVMass            = uwvParameters.uwv_mass;
-            gUWVVolume          = uwvParameters.uwv_volume;
-            gGravity            = uwvParameters.gravity;
-            gWaterDensity       = uwvParameters.waterDensity;
             gSimPerCycle        = uwvParameters.sim_per_cycle;
 
             return true;
@@ -439,11 +428,6 @@ void DynamicModel::getUWVParameters(underwaterVehicle::Parameters &uwvParameters
 
     uwvParameters.distance_body2centerofgravity         = gCenterOfGravity;
     uwvParameters.distance_body2centerofbuoyancy        = gCenterOfBuoyancy;
-    uwvParameters.uwv_float                             = gUWVFloat;
-    uwvParameters.uwv_mass                              = gUWVMass;
-    uwvParameters.uwv_volume                            = gUWVVolume;
-    uwvParameters.gravity                               = gGravity;
-    uwvParameters.waterDensity                          = gWaterDensity;
     uwvParameters.sim_per_cycle                         = gSimPerCycle;
 
     uwvParameters.ctrl_order    = gControlOrder;
@@ -757,9 +741,6 @@ void DynamicModel::calcGravityBuoyancy(base::Vector6d &gravitybuoyancy,
     float yb = gCenterOfBuoyancy(1);
     float zb = gCenterOfBuoyancy(2);
 
-    if (gUWVFloat == true)
-        gWeight = gBuoyancy;
-
     // In Fossen(1994) the z-axis is taken to be positive downwards (pag 47)
     gravitybuoyancy(0) = -(gWeight - gBuoyancy) * sin(e2);
     gravitybuoyancy(1) =  (gWeight - gBuoyancy) * (cos(e2)*sin(e1));
@@ -1026,101 +1007,77 @@ void DynamicModel::checkParameters(const underwaterVehicle::Parameters &uwvParam
     // Checking if other parameters were properly set (no negative values)
 
     checkError = false;
-
-    if(uwvParameters.uwv_mass < 0)
+    for(uint i = 0; i < uwvParameters.thrusterVoltage.size(); i++)
     {
-        textElement = "uwv_mass";
-        checkError = true;
-    }
-    else if(uwvParameters.uwv_volume < 0)
-    {
-        textElement = "uwv_volume";
-        checkError = true;
-    }
-    else if(uwvParameters.waterDensity < 0)
-    {
-        textElement = "waterDensity";
-        checkError = true;
-    }
-    else if(uwvParameters.gravity < 0)
-    {
-        textElement = "gravity";
-        checkError = true;
-    }
-    else
-    {
-        for(uint i = 0; i < uwvParameters.thrusterVoltage.size(); i++)
+        if(uwvParameters.thrusterVoltage[i] < 0)
         {
-            if(uwvParameters.thrusterVoltage[i] < 0)
-            {
-                textElement = "thrusterVoltage";
-                checkError = true;
-                break;
-            }
+            textElement = "thrusterVoltage";
+            checkError = true;
+            break;
         }
+    }
 
-        for(uint i = 0; i < uwvParameters.thruster_coefficients_pwm.size(); i++)
+    for(uint i = 0; i < uwvParameters.thruster_coefficients_pwm.size(); i++)
+    {
+        if(uwvParameters.thruster_coefficients_pwm[i].positive < 0)
         {
-            if(uwvParameters.thruster_coefficients_pwm[i].positive < 0)
-            {
-                textElement = "thruster_coefficient_pwm[i].positive";
-                checkError = true;
-                break;
-            }
-            else if(uwvParameters.thruster_coefficients_pwm[i].negative < 0)
-            {
-                textElement = "thruster_coefficient_pwm[i].negative";
-                checkError = true;
-                break;
-            }
+            textElement = "thruster_coefficient_pwm[i].positive";
+            checkError = true;
+            break;
         }
-
-        for(uint i = 0; i < uwvParameters.linear_thruster_coefficients_pwm.size(); i++)
+        else if(uwvParameters.thruster_coefficients_pwm[i].negative < 0)
         {
-            if(uwvParameters.linear_thruster_coefficients_pwm[i].positive < 0)
-            {
-                textElement = "linear_thruster_coefficients_pwm[i].positive";
-                checkError = true;
-                break;
-            }
-            else if(uwvParameters.linear_thruster_coefficients_pwm[i].negative < 0)
-            {
-                textElement = "linear_thruster_coefficients_pwm[i].negative";
-                checkError = true;
-                break;
-            }
+            textElement = "thruster_coefficient_pwm[i].negative";
+            checkError = true;
+            break;
         }
+    }
 
-        for(uint i = 0; i < uwvParameters.square_thruster_coefficients_pwm.size(); i++)
+    for(uint i = 0; i < uwvParameters.linear_thruster_coefficients_pwm.size(); i++)
+    {
+        if(uwvParameters.linear_thruster_coefficients_pwm[i].positive < 0)
         {
-            if(uwvParameters.square_thruster_coefficients_pwm[i].positive < 0)
-            {
-                textElement = "square_thruster_coefficients_pwm[i].positive";
-                checkError = true;
-                break;
-            }
-            else if(uwvParameters.square_thruster_coefficients_pwm[i].negative < 0)
-            {
-                textElement = "square_thruster_coefficients_pwm[i].negative";
-                checkError = true;
-                break;
-            }
+            textElement = "linear_thruster_coefficients_pwm[i].positive";
+            checkError = true;
+            break;
         }
-
-        for(uint i = 0; i < uwvParameters.thruster_coefficient_rpm.size(); i++)
+        else if(uwvParameters.linear_thruster_coefficients_pwm[i].negative < 0)
         {
-            if(uwvParameters.thruster_coefficient_rpm[i].positive < 0)
-            {
-                textElement = "thruster_coefficient_rpm[i].positive";
-                checkError = true;
-                break;
-            }
-            else if(uwvParameters.thruster_coefficient_rpm[i].negative < 0)
-            {
-                textElement = "thruster_coefficient_rpm[i].negative";
-                checkError = true;
-                break;
-            }
+            textElement = "linear_thruster_coefficients_pwm[i].negative";
+            checkError = true;
+            break;
+        }
+    }
+
+    for(uint i = 0; i < uwvParameters.square_thruster_coefficients_pwm.size(); i++)
+    {
+        if(uwvParameters.square_thruster_coefficients_pwm[i].positive < 0)
+        {
+            textElement = "square_thruster_coefficients_pwm[i].positive";
+            checkError = true;
+            break;
+        }
+        else if(uwvParameters.square_thruster_coefficients_pwm[i].negative < 0)
+        {
+            textElement = "square_thruster_coefficients_pwm[i].negative";
+            checkError = true;
+            break;
+        }
+    }
+
+    for(uint i = 0; i < uwvParameters.thruster_coefficient_rpm.size(); i++)
+    {
+        if(uwvParameters.thruster_coefficient_rpm[i].positive < 0)
+        {
+            textElement = "thruster_coefficient_rpm[i].positive";
+            checkError = true;
+            break;
+        }
+        else if(uwvParameters.thruster_coefficient_rpm[i].negative < 0)
+        {
+            textElement = "thruster_coefficient_rpm[i].negative";
+            checkError = true;
+            break;
         }
     }
 
@@ -1137,15 +1094,6 @@ void DynamicModel::checkParameters(const underwaterVehicle::Parameters &uwvParam
     {
         LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
                 " The sim_per_cycle should be a positive value."
-                "\x1b[0m\n\n");
-        errorSetParameters = true;
-    }
-
-    if(uwvParameters.uwv_mass!=0 && uwvParameters.uwv_volume==0 && uwvParameters.uwv_float != true)
-    {
-        LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                " The uwvMass was set, but the uwvVolume was not. Please set a positive"
-                " value for it, or set uwvFloat: TRUE if weight and buoyancy are equal."
                 "\x1b[0m\n\n");
         errorSetParameters = true;
     }

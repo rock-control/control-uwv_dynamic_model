@@ -102,29 +102,14 @@ struct Parameters
     base::Vector3d distance_body2centerofgravity;
 
     /**
-     * Total mass of the vehicle
+     * Weight of the vehicle
      */
-    double uwv_mass;
+    double weight;
 
     /**
-     * Total volume of the vehicle
+     * Buoyancy of the vehicle
      */
-    double uwv_volume;
-
-    /**
-     * Variable used to assume that the weight of the vehicle is equal to its buoyancy force
-     */
-    bool uwv_float;
-
-    /**
-     * Density of the water in kg/m3
-     */
-    double waterDensity;
-
-    /*
-     * Acceleration of gravity
-     */
-    double gravity;
+    double buoyancy;
 
     /**
      * Variable used to convert the PWM signal into its corresponding DC Voltage
@@ -174,11 +159,8 @@ struct Parameters
         thruster_control_matrix(Eigen::MatrixXd::Zero(6,1)),
         distance_body2centerofbuoyancy(Eigen::VectorXd::Zero(3)),
         distance_body2centerofgravity(Eigen::VectorXd::Zero(3)),
-        uwv_mass(0),
-        uwv_volume(0),
-        uwv_float(false),
-        waterDensity(998.2),
-        gravity(9.81),
+        weight(0),
+        buoyancy(0),
         thrusterVoltage(0)
     {
         thruster_coefficients_pwm.resize(1);

@@ -97,6 +97,12 @@ public:
     void setAngularVelocity(const base::Vector3d &angularVelocity);
 
     /**
+     * Sets the model type for the simulation (simple or complex)
+     * @param modelType - Simple or complex model
+     */
+    void setModelType(const underwaterVehicle::ModelType &modelType);
+
+    /**
      * Sets the samling time
      * * @param samplingTime - New sampling time value
      */
@@ -392,6 +398,8 @@ private:
      * Checks if any error flag is activated
      */
     void checkErrors(void);
+
+    underwaterVehicle::ModelType gModelType;
 
 
     /**

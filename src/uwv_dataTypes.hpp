@@ -28,6 +28,24 @@ struct Direction
 };
 
 /**
+ * Define which model the library is going to use.
+ *
+ * Simple Model:
+ * acceleration  = invInertiaMatrix * ( gEfforts - linDamping - quadDamping - gravityBuoyancy)
+ *
+ * Complex Model:
+ * acceleration  = invInertiaMatrix * ( gEfforts - coriolisEffect - RBCoriolis - AddedMassCoriolis -
+ *                 LiftEffect  - linDamping - quadDamping - gravityBuoyancy - ModelCorrection)
+ */
+
+
+enum ModelType
+{
+    SIMPLE,
+    COMPLEX
+};
+
+/**
  * Structure that contains all the necessary information for simulating the motion model
  */
 struct Parameters

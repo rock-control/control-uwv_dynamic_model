@@ -226,25 +226,6 @@ public:
     static void calcTransfMatrix(base::Matrix6d &transfMatrix,
             const base::Vector3d &eulerAngles);
 
-    /**
-     * FUNCTIONS FOR BACKWARDS COMPABILITY
-     */
-
-    DynamicModel(double samplingTime = 0.01, int simPerCycle = 10,
-            double initialTime = 0.0, double *_initial_state = NULL,
-            int _plant_order=12 ,int controlOrder=5);
-
-    void init_param(underwaterVehicle::Parameters _param);
-    void setPWMLevels(base::samples::Joints thrusters);
-    void setRPMLevels(base::samples::Joints thrusters);
-    Eigen::Vector3d getPosition(void);
-    Eigen::Vector3d getLinearVelocity(void);
-    Eigen::Vector3d getAcceleration(void);
-    Eigen::Quaterniond getOrientation_in_Quat(void);
-    Eigen::Vector3d getOrientation_in_Euler(void);
-    Eigen::Vector3d getAngularVelocity(void);
-    void setSamplingtime(const double samplingTime);
-
 protected:
 
     /**
@@ -542,14 +523,6 @@ private:
     bool errorRPMCoeff;
     bool errorStatus;
 
-    /**
-     * BACKWARDS COMPABILITY
-     */
-
-    /**
-     * Prints the deprecated warn.
-     */
-    void deprecatedWarn(std::string oldFunctionName, std::string oldFunction, std::string newFunction);
 };
 };
 #endif

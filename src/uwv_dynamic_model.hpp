@@ -44,24 +44,6 @@ public:
     bool initParameters(const underwaterVehicle::Parameters &uwvParameters);
 
     /**
-     * Function for sending PWM commands to the model.
-     * @param controlInput - PWM commands that should be applied to the model
-     */
-    bool sendPWMCommands(const base::samples::Joints &controlInput);
-
-    /**
-     * Function for sending RPM commands to the model.
-     * @param controlInput - RPM commands that should be applied to the model
-     */
-    bool sendRPMCommands(const base::samples::Joints &controlInput);
-
-    /**
-     * Function for sending Effort commands to the model.
-     * @param controlInput - Effort commands that should be applied to the model
-     */
-    bool sendEffortCommands(const base::samples::Joints &controlInput);
-
-    /**
      * Sets the general UWV parameters
      * @param uwvParamaters - Structures containing the uwv parameters
      */
@@ -107,12 +89,6 @@ public:
      * * @param samplingTime - New sampling time value
      */
     void setSamplingTime(const double samplingTime);
-
-    /**
-     * Sets the thruster voltage used for PWM commands
-     * * @param thrusterVoltage - New thruster voltage value
-     */
-    void setThrusterVoltage(const std::vector<double> &thrusterVoltage);
 
     /**
      * Gets the underwater vehicle parameters
@@ -278,25 +254,6 @@ private:
     void calcGravityBuoyancy(base::Vector6d &gravitybuoyancy, const base::Vector3d &eulerOrientation);
     void calcModelCorrection(base::Vector6d &ModelCorrection, const base::Vector6d &velocity);
 
-    /**
-     * Converts the PWM signal into its equivalent in DC voltage
-     */
-    void pwmToDC(Eigen::VectorXd &dcVolt, const base::samples::Joints &controlInput);
-
-    /**
-     * Converts the DC voltage into thrust force for each one of the thrusters
-     */
-    void dcToThrustForce(Eigen::VectorXd &thrustForces, const Eigen::VectorXd &dcVolt);
-
-    /**
-     * Converts the RPM commands into thrusters' forces
-     */
-    void rpmToThrustForce(Eigen::VectorXd &thrustForces, const base::samples::Joints &controlInput);
-
-    /**
-     * Converts the individual thrusters' forces into the general effort for the vehicle
-     */
-    void thrustForceToEffort(base::Vector6d &forcesAndMoments, const Eigen::VectorXd &thrustInput);
 
     /**
      * Updates the current states (pose and velocity)
@@ -373,26 +330,6 @@ private:
      * Checks if the negativeMatrix was set. If not, its value will be replaced by positiveMatrix.
      */
     void checkNegativeMatrices(base::Matrix6d &negativeMatrix, const base::Matrix6d &positiveMatrix);
-
-    /**
-     * Checks if the provided controlInput is valid
-     */
-    void checkControlInput(const base::samples::Joints &controlInput, std::string element);
-
-    /**
-     * Checks if at least one of the PWM coefficients was set
-     */
-    void checkPWMCoefficients(void);
-
-    /**
-     * Checks if the new thruster voltage value is valid
-     */
-    void checkThrusterVoltage(const std::vector<double> &thrusterVoltage);
-
-    /**
-     * Checks if the RPM coefficients were set
-     */
-    void checkRPMCoefficients(void);
 
     /**
      * Checks if any error flag is activated
@@ -492,23 +429,9 @@ private:
     base::Matrix6d gQuadDampMatrixNeg;
 
     /**
-     * Thrust configuration matrix
-     */
-    Eigen::MatrixXd gThrustConfigMatrix;
-
-    /**
      * Lift coefficients
      */
     Eigen::Vector4d gLiftCoefficients;
-
-    /**
-     * Thrusters' coefficients for PWM and RPM
-     */
-    std::vector<Direction> gThrusterCoeffPWM;
-    std::vector<Direction> gLinThrusterCoeffPWM;
-    std::vector<Direction> gQuadThrusterCoeffPWM;
-    std::vector<Direction> gThrusterCoeffRPM;
-    std::vector<double>    gThrusterVoltage;
 
 
     /**
@@ -527,8 +450,6 @@ private:
     bool errorConstruction;
     bool errorControlInput;
     bool errorSetParameters;
-    bool errorPWMCoeff;
-    bool errorRPMCoeff;
     bool errorStatus;
 
 };

@@ -78,6 +78,8 @@ void DynamicModel::iniatilizeClass(int controlOrder, double samplingTime,
         gBuoyancy = 0;
         gCenterOfGravity = Eigen::VectorXd::Zero(3);
         gCenterOfBuoyancy = Eigen::VectorXd::Zero(3);
+
+        gModelType = underwaterVehicle::SIMPLE;
     }
 }
 
@@ -252,31 +254,40 @@ void DynamicModel::calcAcceleration(Eigen::VectorXd &velocityAndAcceleration,
 
     // Forces and Moments vectors
     base::Matrix6d invInertiaMatrix  = Eigen::MatrixXd::Zero(6,6);
-    base::Vector6d coriolisEffect    = Eigen::VectorXd::Zero(6);
-    base::Vector6d RBCoriolis        = Eigen::VectorXd::Zero(6);
-    base::Vector6d AddedMassCoriolis = Eigen::VectorXd::Zero(6);
     base::Vector6d linDamping        = Eigen::VectorXd::Zero(6);
     base::Vector6d quadDamping       = Eigen::VectorXd::Zero(6);
-    base::Vector6d LiftEffect        = Eigen::VectorXd::Zero(6);
     base::Vector6d gravityBuoyancy   = Eigen::VectorXd::Zero(6);
-    base::Vector6d acceleration      = Eigen::VectorXd::Zero(6);
     base::Vector6d worldVelocity     = Eigen::VectorXd::Zero(6);
-    base::Vector6d ModelCorrection   = Eigen::VectorXd::Zero(6);
+    base::Vector6d acceleration      = Eigen::VectorXd::Zero(6);
 
     // Calculating the efforts for each one of the hydrodynamics effects
     calcInvInertiaMatrix(invInertiaMatrix, velocity);
-    calcCoriolisEffect(coriolisEffect, velocity);
-    calcRBCoriolis(RBCoriolis, velocity);
-    calcAddedMassCoriolis(AddedMassCoriolis, velocity);
     calcLinDamping(linDamping, velocity);
     calcQuadDamping(quadDamping, velocity);
-    calcLiftEffect(LiftEffect, velocity);
     calcGravityBuoyancy(gravityBuoyancy, gEulerOrientation);
-    calcModelCorrection(ModelCorrection, velocity);
 
     // Calculating the acceleration based on all the hydrodynamics effects
-    acceleration  = invInertiaMatrix * ( gEfforts - coriolisEffect - RBCoriolis - AddedMassCoriolis - LiftEffect  -
-            linDamping - quadDamping - gravityBuoyancy - ModelCorrection);
+    switch(gModelType)
+    {
+    case underwaterVehicle::SIMPLE:
+        acceleration  = invInertiaMatrix * ( gEfforts - linDamping - quadDamping - gravityBuoyancy);
+        break;
+    case underwaterVehicle::COMPLEX:
+        base::Vector6d coriolisEffect    = Eigen::VectorXd::Zero(6);
+        base::Vector6d RBCoriolis        = Eigen::VectorXd::Zero(6);
+        base::Vector6d AddedMassCoriolis = Eigen::VectorXd::Zero(6);
+        base::Vector6d LiftEffect        = Eigen::VectorXd::Zero(6);
+        base::Vector6d ModelCorrection   = Eigen::VectorXd::Zero(6);
+        calcCoriolisEffect(coriolisEffect, velocity);
+        calcRBCoriolis(RBCoriolis, velocity);
+        calcAddedMassCoriolis(AddedMassCoriolis, velocity);
+        calcLiftEffect(LiftEffect, velocity);
+        calcModelCorrection(ModelCorrection, velocity);
+
+        acceleration  = invInertiaMatrix * ( gEfforts - coriolisEffect - RBCoriolis - AddedMassCoriolis - LiftEffect  -
+                linDamping - quadDamping - gravityBuoyancy - ModelCorrection);
+        break;
+    }
 
     // Converting the body velocity to world velocity. This is necessary because
     // when the integration takes place in order to find the position, the velocity
@@ -389,6 +400,11 @@ void DynamicModel::setLinearVelocity(const base::Vector3d &linearVelocity)
 void DynamicModel::setAngularVelocity(const base::Vector3d &angularVelocity)
 {
     gAngularVelocity = angularVelocity;
+}
+
+void DynamicModel::setModelType(const underwaterVehicle::ModelType &modelType)
+{
+    gModelType = modelType;
 }
 
 void DynamicModel::setSamplingTime(const double samplingTime)

@@ -34,7 +34,7 @@ class DynamicModel : public RK4_SIM
 {
 
 public:
-    DynamicModel(int controlOrder, double samplingTime = 0.01,
+    DynamicModel(double samplingTime = 0.01,
             int simPerCycle = 10, double initialTime = 0.0);
 
     /**
@@ -92,121 +92,88 @@ public:
 
     /**
      * Gets the underwater vehicle parameters
-     * @param uwvParameters - Underwater vehicle parameters
+     * @return - Underwater vehicle parameters
      */
-    void getUWVParameters(underwaterVehicle::Parameters &uwvParameters);
+    underwaterVehicle::Parameters getUWVParameters(void) const;
 
     /**
      * Gets the position
-     * @param position - Position vector
+     * @return Position vector
      */
-    void getPosition(base::Position &position);
+    base::Position getPosition(void) const;
 
     /**
      * Gets the euler orientation
-     * @param eulerOrientation - Euler orientation vector
+     * @return eulerOrientation - Euler orientation vector
      */
-    void getEulerOrientation(base::Vector3d &eulerOrientation);
+    base::Vector3d getEulerOrientation(void) const;
 
     /**
      * Gets the quaternion orientation
-     * @param quatOrientation - Quaternion orientation
+     * @return quatOrientation - Quaternion orientation
      */
-    void getQuatOrienration(base::Orientation &quatOrientation);
+    base::Orientation getQuatOrienration(void) const;
 
     /**
      * Gets the linear velocity
-     * @param linearVelocity - Linear velocity vector
+     * @return linearVelocity - Linear velocity vector
      */
-    void getLinearVelocity(base::Vector3d &linearVelocity, bool worldFrame = true);
+    base::Vector3d getLinearVelocity(bool worldFrame = true) const;
 
     /**
      * Gets the angular velocity
-     * @param angularVelocity - Angular velocity vector
+     * @return angularVelocity - Angular velocity vector
      */
-    void getAngularVelocity(base::Vector3d &angularVelocity, bool worldFrame = true);
+    base::Vector3d getAngularVelocity(bool worldFrame = true) const;
 
     /**
      * Gets the linear acceleration
-     * @param linearAcceleration - Linear acceleration vector
+     * @return linearAcceleration - Linear acceleration vector
      */
-    void getLinearAcceleration(base::Vector3d &linearAcceleration);
+    base::Vector3d getLinearAcceleration(void) const;
 
     /**
      * Gets the angular acceleration
-     * @param angularAcceleration - Angular acceleration vector
+     * @return angularAcceleration - Angular acceleration vector
      */
-    void getAngularAcceleration(base::Vector3d &angularAcceleration);
+    base::Vector3d getAngularAcceleration(void) const;
 
     /**
      * Gets the the system states (pose and velocity)
-     * @param systemStates - System states vector (size = 12)
+     * @return systemStates - System states vector (size = 12)
      */
-    void getStates(Eigen::VectorXd &systemStates);
+    Eigen::VectorXd getStates(void) const;
 
     /**
      * Gets the current efforts' vector
-     * @param efforts - Vector containing the current effort (forces and moments)
+     * @return efforts - Vector containing the current effort (forces and moments)
      */
-    void getEfforts(base::Vector6d &efforts);
+    base::Vector6d getEfforts(void) const;
 
     /**
      * Gets the simulation time in seconds
-     * @param simulationTime - Simulation time in seconds
+     * @return simulationTime - Simulation time in seconds
      */
-    void getSimulationTime(double &simulationTime);
+    double getSimulationTime(void) const;
 
     /**
      * Gets the sampling time
-     * @para samplingTime - Sampling time variable
+     * @return samplingTime - Sampling time variable
      */
-    void getSamplingTime(double &samplingTime);
+    double getSamplingTime(void) const;
 
     /**
      * Gets the number of simulations (iterations) per cycle
-     * @param simPerCycle - Number of simulations per cycle
+     * @return simPerCycle - Number of simulations per cycle
      */
-    void getSimPerCycle(int &simPerCycle);
+    int getSimPerCycle(void) const;
 
     /**
      * Converts from euler angles to quaternions.
-     * @param quaternion - Quaternion variable
      * @param eulerAngles - Euler angles vector
+     * @return quaternion - Quaternion variable
      */
-    static void eulerToQuaternion(base::Quaterniond &quaternion,
-            const base::Vector3d &eulerAngles);
-
-    /**
-     * Converts the Body-Frame coordinates into World-Frame coordinates.
-     * @param worldCoordinates - Vector that will receive the world coordinates
-     * @param bodyCoordinates - Vector that contains the body coordinates
-     * @param eulerAngles - Current euler angles necessary to do the frame
-     * 						transformation
-     */
-    static void convBodyToWorld(base::Vector6d &worldCoordinates,
-            const base::Vector6d &bodyCoordinates,
-            const base::Vector3d &eulerAngles);
-
-    /**
-     * Converts the World-Frame coordinates into Body-Frame coordinates.
-     * @param bodyCoordinates - Vector that will receive the body coordinates
-     * @param worldCoordinates - Vector that contains the world coordinates
-     * @param eulerAngles - Current euler angles necessary to do the frame
-     * 						transformation
-     */
-    static void convWorldToBody(base::Vector6d &bodyCoordinates,
-            const base::Vector6d &worldCoordinates,
-            const base::Vector3d &eulerAngles);
-
-    /**
-     * Calculates the transformation matrix that is used to transform
-     * coordinates from Body-Frame to World-Frame.
-     * ( worldFrame = transMatrix * bodyFrame )
-     * @param transfMatrix - Transformation matrix
-     * @param eulerAngles - Current euler angles
-     */
-    static void calcTransfMatrix(base::Matrix6d &transfMatrix,
-            const base::Vector3d &eulerAngles);
+    static base::Quaterniond eulerToQuaternion( const base::Vector3d &eulerAngles) const;
 
 protected:
 
@@ -214,46 +181,76 @@ protected:
      * Calculates the vehicle acceleration based on the current velocity,
      * on the control input (efforts) and on the mathematical model.
      * NOTE: This function should be used only by the RK4 Integrator.
-     * @param velocityAndAcceleration - Variable used to return the new
+     * @return velocityAndAcceleration - Variable used to return the new
      *                                  accelerations together with the
      *                                  current velocities
      * @param velocity - Current velocities
      * @param controlInput - Current control input
      */
-    void calcAcceleration(Eigen::VectorXd &velocityAndAcceleration,
-                          const base::Vector6d &velocity,
+    Eigen::VectorXd calcAcceleration( const base::Vector6d &velocity,
                           const base::Vector6d &controlInput);
 
 private:
 
     /**
-     *	Initializes the class parameters. Necessary for allowing backwards compability.
+     * Calculates the inverse of the inertia matrix.
      */
-    void iniatilizeClass(int controlOrder, double samplingTime = 0.01,
-            int simPerCycle = 10, double initialTime = 0.0);
-
-    /**
-     * Calculates the inverse of the inertia matrix. It considers both positive and negative
-     * inertia matrices.
-     */
-    void calcInvInertiaMatrix(base::Matrix6d &invInertiaMatrix, const base::Vector6d &velocity);
+    base::Matrix6d calcInvInertiaMatrix(void) const;
 
     /**
      * Functions for calculating the hydrodynamics effects.
      */
 
-    void calcCoriolisEffect(base::Vector6d &coriolisEffect, const base::Vector6d &velocity);
-    /* Formulas can be found in [Prestero (1994)]. */
-    void calcLiftEffect(base::Vector6d &LiftEffect, const base::Vector6d &velocity);
-    /* Formulas can be found in [Fossen (1994)]. */
-    void calcRBCoriolis(base::Vector6d &RBCoriolis, const base::Vector6d &velocity);
-    /* Formulas can be found in [Fossen (1994)]. */
-    void calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis, const base::Vector6d &velocity);
-    void calcLinDamping(base::Vector6d &linDamping, const base::Vector6d &velocity);
-    void calcQuadDamping(base::Vector6d &quadDamping, const base::Vector6d &velocity);
-    void calcGravityBuoyancy(base::Vector6d &gravitybuoyancy, const base::Vector3d &eulerOrientation);
-    void calcModelCorrection(base::Vector6d &ModelCorrection, const base::Vector6d &velocity);
+    /** Compute coriolis matrix
+     *
+     *  @param inertiaMatrix
+     *  @param velocity
+     *  @return coriolis matrix
+     */
+    base::Matrix6d calcCoriolisMatrix( const base::Matrix6d &inertiaMatrix, const base::Vector6d &velocity) const;
 
+    /** Compute coriolis and centripetal forces
+     *
+     * @param coriolis matrix
+     * @param velocity
+     * @return forces and torques vector
+     */
+    base::Vector6d calcCoriolisEffect( const base::Matrix6d &coriolisMatrix, const base::Vector6d &velocity) const;
+
+    /** Compute quadratic matrix for the COMPLEX mode
+     *
+     * @param vector of 6 quadDamping matrices
+     * @param velocity vector
+     * @return dampingMatrix
+     */
+    base::Matrix6d caclDampMatrix( const vector<base::Matrix6d> &quadDampMatrices, const base::Vector6d &velocity) const;
+
+    /** Compute linear damping in SIMPLE mode
+     *
+     * @param linDamping matrix
+     * @param velocity vector
+     * @return forces and torques vector
+     */
+    base::Vector6d calcLinDamping(const base::Matrix6d &linDampMatrix, const base::Vector6d &velocity) const;
+
+    /** Compute quadratic damping in SIMPLE mode
+     *
+     * @param quadDamping matrix
+     * @param velocity vector
+     * @return forces and torques vector
+     */
+    base::Vector6d calcQuadDamping( const base::Matrix6d &quadDampMatrix, const base::Vector6d &velocity) const;
+
+    /** Compute gravity and buoyancy terms
+     *
+     * @param quaternion orientation
+     * @param weight [N]
+     * @param buoyancy [N]
+     * @param vector center of gravity
+     * @param vector center of bouyancy
+     * @return forces and torques vector
+     */
+    base::Vector6d calcGravityBuoyancy( const Eigen::Quaterniond& orientation, const double& weight, const double& bouyancy, const base::Vector3d& cg, const base::Vector3d& cb) const;
 
     /**
      * Updates the current states (pose and velocity)
@@ -261,51 +258,28 @@ private:
     void updateStates(Eigen::VectorXd &newSystemStates);
 
     /**
-     * Sets the Inertia matrices
-     * @param inertiaMatrixPos - Inertia matrix for positive velocities
-     * @param inertiaMatrixNeg - Inertia matrix for negative velocities
+     * Sets the Inertia matrix (inertia + added mass matrix)
+     * @param inertiaMatrix - Inertia matrix
      */
-    void setInertiaMatrix(const base::Matrix6d &inertiaMatrixPos,
-            const base::Matrix6d &inertiaMatrixNeg = Eigen::MatrixXd::Zero(6,6));
+    void setInertiaMatrix(const base::Matrix6d &inertiaMatrixPos);
 
     /**
-     * Sets the Coriolis matrices
-     * @param coriolisMatrixPos - Coriolis matrix for positive velocities
-     * @param coriolisMatrixNeg - Coriolis matrix for negative velocities
+     * Sets the Linear Damping matrix for SIMPLE CASE
+     * @param linDampingMatrix - Linear Damping matrix
      */
-    void setCoriolisMatrix(const base::Matrix6d &coriolisMatrixPos,
-            const base::Matrix6d &coriolisMatrixNeg = Eigen::MatrixXd::Zero(6,6));
+    void setLinDampingMatrix(const base::Matrix6d &linDampingMatrix);
 
     /**
-     * Sets the Added Mass matrices
-     * @param AddedMassMatrixPos - Added mass matrix for positive velocities
-     * @param AddedMassMatrixMatrixNeg - Added mass matrix for negative velocities
+     * Sets the Quadratic Damping matrix
+     * @param quadDampingMatrixPos - Quadratic Damping matrix
      */
-    void setAddedMassMatrix(const base::Matrix6d &AddedMassMatrixPos,
-            const base::Matrix6d &AddedMassMatrixNeg = Eigen::MatrixXd::Zero(6,6));
-
+    void setQuadDampingMatrix(const base::Matrix6d &quadDampingMatrix);
 
     /**
-     * Sets the Lift coefficients
-     * @param LiftCoefficients
+     * Sets the Damping matrices
+     * @param dampingMatrices - Vector of Damping matrix
      */
-    void setLiftCoefficients(const base::Vector4d &LiftCoefficients);
-
-    /**
-     * Sets the Linear Damping matrices
-     * @param linDampingMatrixPos - Linear Damping matrix for positive velocities
-     * @param linDampingMatrixNeg - Linear Damping matrix for negative velocities
-     */
-    void setLinDampingMatrix(const base::Matrix6d &linDampingMatrixPos,
-            const base::Matrix6d &linDampingMatrixNeg = Eigen::MatrixXd::Zero(6,6));
-
-    /**
-     * Sets the Quadratic Damping matrices
-     * @param quadDampingMatrixPos - Quadratic Damping matrix for positive velocities
-     * @param quadDampingMatrixNeg - Quadratic Damping matrix for negative velocities
-     */
-    void setQuadDampingMatrix(const base::Matrix6d &quadDampingMatrixPos,
-            const base::Matrix6d &quadDampingMatrixNeg = Eigen::MatrixXd::Zero(6,6));
+    void setDampingMatrix(const base::vector<base::Matrix6d> &dampingMatrices);
 
     /**
      * FUNCTIONS FOR CHECKING FOR USER'S MISUSE
@@ -314,7 +288,7 @@ private:
     /**
      * Checks if the variables provided in the class construction are valid
      */
-    void checkConstruction(int &controlOrder, double &samplingTime, int &simPerCycle, double &initialTime);
+    void checkConstruction(double &samplingTime, int &simPerCycle, double &initialTime);
 
     /**
      * Determinant of inertiaMatrix must be different from zero
@@ -347,7 +321,7 @@ private:
      * Pose variables
      */
     base::Vector3d gPosition;
-    base::Vector3d gEulerOrientation;
+    base::Quaterniond gOrientation;
 
     /**
      * Velocity variables
@@ -382,12 +356,6 @@ private:
     int gSystemOrder;
 
     /**
-     * Number of control inputs
-     */
-    int gControlOrder;
-
-
-    /**
      * SIMULATION PARAMETERS
      */
 
@@ -399,40 +367,24 @@ private:
      */
 
     /**
-     * Intertia matrices for positive and negative speeds
+     * Inertia matrix
      */
-    base::Matrix6d gInertiaMatrixPos;
-    base::Matrix6d gInertiaMatrixNeg;
+    base::Matrix6d gInertiaMatrix;
 
     /**
-     * Coriolis matrices for positive and negative speeds
+     * Linear damping matrix for SIMPLE model type
      */
-    base::Matrix6d gCoriolisMatrixPos;
-    base::Matrix6d gCoriolisMatrixNeg;
+    base::Matrix6d gLinDampMatrix;
 
     /**
-     * Coriolis matrices for positive and negative speeds
+     * Quadratic damping matrix for SIMPLE model type
      */
-    base::Matrix6d gAddedMassMatrixPos;
-    base::Matrix6d gAddedMassMatrixNeg;
+    base::Matrix6d gQuadDampMatrix;
 
     /**
-     * Linear damping matrices for positive and negative speeds
+     * Quadratic damping matrices for COMPLEX model type
      */
-    base::Matrix6d gLinDampMatrixPos;
-    base::Matrix6d gLinDampMatrixNeg;
-
-    /**
-     * Quadratic damping matrices for positive and negative speeds
-     */
-    base::Matrix6d gQuadDampMatrixPos;
-    base::Matrix6d gQuadDampMatrixNeg;
-
-    /**
-     * Lift coefficients
-     */
-    Eigen::Vector4d gLiftCoefficients;
-
+    std::vector<base::Matrix6d> gQuadDampMatrices;
 
     /**
      * RESTORING FORCES PARAMETERS

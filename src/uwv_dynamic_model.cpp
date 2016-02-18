@@ -23,14 +23,14 @@
 
 namespace underwaterVehicle
 {
-DynamicModel::DynamicModel(int controlOrder, double samplingTime,
+DynamicModel::DynamicModel(double samplingTime,
         int simPerCycle,  double initialTime)
 : RK4_SIM(controlOrder, (samplingTime/(double)simPerCycle))
 {
-    underwaterVehicle::DynamicModel::iniatilizeClass(controlOrder, samplingTime, simPerCycle, initialTime);
+    underwaterVehicle::DynamicModel::iniatilizeClass(samplingTime, simPerCycle, initialTime);
 }
 
-void DynamicModel::iniatilizeClass(int controlOrder, double samplingTime,
+void DynamicModel::iniatilizeClass(double samplingTime,
         int simPerCycle,  double initialTime)
 {
     // Error flags. The errorModelInit will be unset when the model is initialized
@@ -42,12 +42,11 @@ void DynamicModel::iniatilizeClass(int controlOrder, double samplingTime,
 
     // Checks the arguments provided to the constructor and then initialize the
     // members of the class
-    checkConstruction(controlOrder, samplingTime, simPerCycle, initialTime);
+    checkConstruction(samplingTime, simPerCycle, initialTime);
 
     if(!errorConstruction)
     {
         gSystemOrder = 12;
-        gControlOrder = controlOrder;
         gSamplingTime = samplingTime;
         gSimPerCycle = simPerCycle;
         gCurrentTime = initialTime;

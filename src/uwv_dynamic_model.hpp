@@ -26,6 +26,7 @@
 #include "base/samples/Joints.hpp"
 #include "base/samples/RigidBodyState.hpp"
 #include "base/Pose.hpp"
+#include "orocos/auv_control/6dControl.hpp"
 
 
 namespace underwaterVehicle
@@ -195,39 +196,43 @@ private:
     /**
      * Calculates the inverse of the inertia matrix.
      */
-    base::Matrix6d calcInvInertiaMatrix(void) const;
+    base::Matrix6d calcInvInertiaMatrix(const base::Matrix6d &inertiaMatrix) const;
 
     /**
      * Functions for calculating the hydrodynamics effects.
      */
 
-    /** Compute coriolis matrix
-     *
-     *  @param inertiaMatrix
-     *  @param velocity
-     *  @return coriolis matrix
-     */
-    base::Matrix6d calcCoriolisMatrix( const base::Matrix6d &inertiaMatrix, const base::Vector6d &velocity) const;
-
     /** Compute coriolis and centripetal forces
      *
+     *  Based on Fossen[1994] and McFarland[2013]
      * @param coriolis matrix
      * @param velocity
      * @return forces and torques vector
      */
-    base::Vector6d calcCoriolisEffect( const base::Matrix6d &coriolisMatrix, const base::Vector6d &velocity) const;
+    base::Vector6d calcCoriolisEffect( const base::Matrix6d &inertiaMatrix, const base::Vector6d &velocity) const;
 
-    /** Compute quadratic matrix for the COMPLEX mode
+    /** Compute quadratic effect according mode
      *
+     * @param vector of damping matrices
+     * @param velocity vector
+     * @param modelType
+     * @return dampingMatrix
+     */
+    base::Vector6d caclDampingEffect( const std::vector<base::Matrix6d> &quadDampMatrices, const base::Vector6d &velocity, const ModelType &modelType) const;
+
+    /** Compute quadratic damping for the COMPLEX mode
+     *
+     *  Based on the general 6DOF coupled quadratic drag matrix proposed by McFarland[2013]
      * @param vector of 6 quadDamping matrices
      * @param velocity vector
      * @return dampingMatrix
      */
-    base::Matrix6d caclDampMatrix( const vector<base::Matrix6d> &quadDampMatrices, const base::Vector6d &velocity) const;
+    base::Vector6d caclGeneralQuadDamping( const std::vector<base::Matrix6d> &quadDampMatrices, const base::Vector6d &velocity) const;
 
     /** Compute linear damping in SIMPLE mode
      *
-     * @param linDamping matrix
+     *  Based on the usual linear damping proposed by Fossen[1994].
+     * @param linDamping diagonal matrix
      * @param velocity vector
      * @return forces and torques vector
      */
@@ -235,7 +240,8 @@ private:
 
     /** Compute quadratic damping in SIMPLE mode
      *
-     * @param quadDamping matrix
+     * Based on the usual quadratic damping proposed by Fossen[1994]
+     * @param quadDamping diagonal matrix
      * @param velocity vector
      * @return forces and torques vector
      */
@@ -247,10 +253,12 @@ private:
      * @param weight [N]
      * @param buoyancy [N]
      * @param vector center of gravity
-     * @param vector center of bouyancy
+     * @param vector center of buoyancy
      * @return forces and torques vector
      */
-    base::Vector6d calcGravityBuoyancy( const Eigen::Quaterniond& orientation, const double& weight, const double& bouyancy, const base::Vector3d& cg, const base::Vector3d& cb) const;
+    base::Vector6d calcGravityBuoyancy( const Eigen::Quaterniond& orientation,
+            const double& weight, const double& bouyancy,
+            const base::Vector3d& cg, const base::Vector3d& cb) const;
 
     /**
      * Updates the current states (pose and velocity)
@@ -261,7 +269,7 @@ private:
      * Sets the Inertia matrix (inertia + added mass matrix)
      * @param inertiaMatrix - Inertia matrix
      */
-    void setInertiaMatrix(const base::Matrix6d &inertiaMatrixPos);
+    void setInertiaMatrix(const base::Matrix6d &inertiaMatrix);
 
     /**
      * Sets the Linear Damping matrix for SIMPLE CASE
@@ -279,7 +287,7 @@ private:
      * Sets the Damping matrices
      * @param dampingMatrices - Vector of Damping matrix
      */
-    void setDampingMatrix(const base::vector<base::Matrix6d> &dampingMatrices);
+    void setDampingMatrices(const std::vector<base::Matrix6d> &dampingMatrices);
 
     /**
      * FUNCTIONS FOR CHECKING FOR USER'S MISUSE
@@ -294,6 +302,11 @@ private:
      * Determinant of inertiaMatrix must be different from zero
      */
     void checkParameters(const underwaterVehicle::Parameters &pwvParameters);
+
+    /**
+     * Check control input.
+     */
+    void checkControlInput(const base::LinearAngular6DCommand &controlInput) const;
 
     /**
      * Checks if the positive matrices were set.
@@ -370,6 +383,11 @@ private:
      * Inertia matrix
      */
     base::Matrix6d gInertiaMatrix;
+
+    /**
+     * Inverse of inertia matrix
+     */
+    base::Matrix6d gInvInertiaMatrix;
 
     /**
      * Linear damping matrix for SIMPLE model type

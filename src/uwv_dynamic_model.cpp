@@ -449,276 +449,94 @@ void DynamicModel::getSimPerCycle(int &simPerCycle)
     simPerCycle = gSimPerCycle;
 }
 
-void DynamicModel::eulerToQuaternion(base::Quaterniond &quaternion,
-        const base::Vector3d &eulerAngles)
-{
 
-    quaternion.w() = ( cos(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) +
-            ( sin(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
-    quaternion.x() = ( sin(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) -
-            ( cos(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
-    quaternion.y() = ( cos(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) +
-            ( sin(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
-    quaternion.z() = ( cos(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*sin(eulerAngles(2)/2) ) -
-            ( sin(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*cos(eulerAngles(2)/2) );
+base::Matrix6d DynamicModel::calcInvInertiaMatrix(const base::Matrix6d &inertiaMatrix) const
+{
+    /**
+     * M * M^(-1) = I
+     */
+    Eigen::JacobiSVD<base::Matrix6d> svd(inertiaMatrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    return svd.solve(base::Matrix6d::Identitity());
 }
 
-void DynamicModel::calcInvInertiaMatrix(base::Matrix6d &invInertiaMatrix,
-        const base::Vector6d &velocity)
+base::Vector6d DynamicModel::calcCoriolisEffect(const base::Matrix6d &inertiaMatrix, const base::Vector6d &velocity) const
 {
-    Eigen::MatrixXd inertiaMatrix = Eigen::MatrixXd::Zero(6,6);
-    Eigen::MatrixXd addedMassMatrix = Eigen::MatrixXd::Zero(6,6);
+    /**
+     * Based on McFarland[2013] and Fossen[1994]
+     * coriolisEffect = H(M*v)*v
+     * M = inertiaMatrix; v = velocity
+     * Operator H: R^6 -> R^(6x6).
+     *      H(v) = [0(3x3), J(v.head(3));
+     *              J(v.head(3)),  J(v.tail(3))]
+     * Operator J: R^3 -> R^(3x3) (the so(3) operator, skew-symmetric matrix)
+     *      J([v1; v2; v3]) = [ 0 ,-v3, v2;
+     *                          v3, 0 ,-v1;
+     *                         -v2, v1, 0]
+     * Cross product:
+     *      J(v.head(3)) * v.tail(3) = v.head(3) X v.tail(3)
+     */
 
-    for(int i = 0; i < 6; i++)
+    base::Vector6d coriloisEffect;
+    base::Vector6d prod = inertiaMatrix * velocity;
+    return coriloisEffect << prod.head(3).cross(velocity.tail(3)),
+                prod.head(3).cross(velocity.head(3)) + prod.tail(3).cross(velocity.tail(3));
+}
+
+base::Vector6d DynamicModel::caclDampingEffect( const std::vector<base::Matrix6d> &quadDampMatrices, const base::Vector6d &velocity, const ModelType &modelType) const
+{
+    if(modelType == SIMPLE)
     {
-        if(velocity(i) > -0.001)
-            inertiaMatrix.block(0 , i , 6, 1) = gInertiaMatrixPos.block(0 , i , 6, 1);
-        else
-            inertiaMatrix.block(0 , i , 6, 1) = gInertiaMatrixNeg.block(0 , i , 6, 1);
+        if(quadDampMatrices.size() != 2)
+            throw std::runtime_error("quadDampMatrices does not have 2 elements, as expected for the SIMPLE mode.");
+        return calcLinDamping(quadDampMatrices[0], velocity) + calcQuadDamping(quadDampMatrices[1], velocity);
     }
-
-    for(int i = 0; i < 6; i++)
-    {
-        if(velocity(i) > -0.001)
-            addedMassMatrix.block(0 , i , 6, 1) = gAddedMassMatrixPos.block(0 , i , 6, 1);
-        else
-            addedMassMatrix.block(0 , i , 6, 1) = gAddedMassMatrixNeg.block(0 , i , 6, 1);
-    }
-
-    inertiaMatrix = inertiaMatrix + addedMassMatrix;
-
-    invInertiaMatrix = inertiaMatrix.inverse();
+    else if(modelType == COMPLEX)
+        return caclGeneralQuadDamping(quadDampMatrices, velocity);
+    else
+        throw std::runtime_error("unknown modelType.");
 }
 
-void DynamicModel::calcCoriolisEffect(base::Vector6d &coriolisEffect,
-        const base::Vector6d &velocity)
+base::Vector6d DynamicModel::caclGeneralQuadDamping( const std::vector<base::Matrix6d> &quadDampMatrices, const base::Vector6d &velocity) const
 {
-    Eigen::MatrixXd coriolisMatrix = Eigen::MatrixXd::Zero(6,6);
+    /**
+     *  Based on McFarland[2013]
+     *  damping effect = sum(Di * |vi|) * v, i=1...6
+     *  D = quadDampMatrix; v = velocity
+     */
+    if(quadDampMatrices.size() != 6)
+        throw std::runtime_error("quadDampMatrices does not have 6 elements.");
 
-    for(int i = 0; i < 6; i++)
-    {
-        if(velocity(i) > -0.001)
-            coriolisMatrix.block(0 , i , 6, 1) = gCoriolisMatrixPos.block(0 , i , 6, 1);
-        else
-            coriolisMatrix.block(0 , i , 6, 1) = gCoriolisMatrixNeg.block(0 , i , 6, 1);
-    }
-    coriolisEffect = coriolisMatrix*velocity;
+    base::Matrix6d dampMatrix = base::Matrix6d::Zero();
+    for(size_t i=0; i < quadDampMatrices.size(); i++)
+        dampMatrix += quadDampMatrices[i] * velocity.abs()[i];
+
+    return dampMatrix * velocity;
 }
 
-void DynamicModel::calcLinDamping(base::Vector6d &linDamping,
-        const base::Vector6d &velocity)
+base::Vector6d DynamicModel::calcLinDamping(const base::Matrix6d &linDampMatrix, const base::Vector6d &velocity) const
 {
-    Eigen::MatrixXd linDampMatrix = Eigen::MatrixXd::Zero(6,6);
-
-    for(int i = 0; i < 6; i++)
-    {
-
-        if(velocity(i) > -0.001)
-            linDampMatrix.block(0 , i , 6, 1) = gLinDampMatrixPos.block(0, i , 6, 1);
-        else
-            linDampMatrix.block(0 , i , 6, 1) = gLinDampMatrixNeg.block(0 , i , 6, 1);
-
-    }
-    linDamping = linDampMatrix*velocity;
+    return linDampMatrix * velocity;
 }
 
-void DynamicModel::calcQuadDamping(base::Vector6d &quadDamping,
-        const base::Vector6d &velocity)
+base::Vector6d DynamicModel::calcQuadDamping( const base::Matrix6d &quadDampMatrix, const base::Vector6d &velocity) const
 {
-    Eigen::MatrixXd quadDampMatrix = Eigen::MatrixXd::Zero(6,6);
-    Eigen::VectorXd absoluteVelocity = Eigen::VectorXd::Zero(6);
-
-    for(int i = 0; i < 6; i++)
-    {
-        if(velocity(i) > -0.001)
-            quadDampMatrix.block(0 , i , 6, 1) = gQuadDampMatrixPos.block(0, i , 6, 1);
-        else
-            quadDampMatrix.block(0 , i , 6, 1) = gQuadDampMatrixNeg.block(0 , i , 6, 1);
-
-        absoluteVelocity[i] = fabs(velocity[i]);
-    }
-
-    quadDamping = quadDampMatrix*absoluteVelocity.asDiagonal()*velocity;
+    return quadDampMatrix * velocity.abs().asDiagonal() * velocity;
 }
 
-void DynamicModel::calcLiftEffect(base::Vector6d &LiftEffect,
-        const base::Vector6d &velocity)
+base::Vector6d DynamicModel::calcGravityBuoyancy( const Eigen::Quaterniond& orientation,
+        const double& weight, const double& bouyancy,
+        const base::Vector3d& cg, const base::Vector3d& cb) const
 {
-    double u = velocity[0];
-    double v = velocity[1];
-    double w = velocity[2];
-
-    LiftEffect(0) = 0;
-    LiftEffect(1) = gLiftCoefficients(0)*u*v;
-    LiftEffect(2) = gLiftCoefficients(1)*u*w;
-    LiftEffect(3) = 0;
-    LiftEffect(4) = gLiftCoefficients(2)*u*w;
-    LiftEffect(5) = gLiftCoefficients(3)*u*v;
+    /** Based on McFarland[2013] and Fossen[1994]
+     * gravityBuoyancy = [R^T * e3 * (W-B);
+     *                    (cg*W - cb*B) X R^T * e3]
+     *  R: Rotation matrix from body-frame to world-frame
+     *  e3 = [0; 0; 1]
+     */
+    base::Vector6d gravityEffect;
+    return gravityEffect << orientation.inverse() * Eigen::Vector3d(0, 0, (weight-bouyancy)),
+            (cg*weight - cb*bouyancy).cross(orientation.inverse() * Eigen::Vector3d(0, 0, 1));
 }
-
-void DynamicModel::calcRBCoriolis(base::Vector6d &RBCoriolis,
-        const base::Vector6d &velocity)
-{
-
-    float xg = gCenterOfGravity(0);
-    float yg = gCenterOfGravity(1);
-    float zg = gCenterOfGravity(2);
-
-    float m = gInertiaMatrixPos(0,0);
-    float Ix = gInertiaMatrixPos(3,3);
-    float Iy = gInertiaMatrixPos(4,4);
-    float Iz = gInertiaMatrixPos(5,5);
-    float Ixy = -gInertiaMatrixPos(3,4);
-    float Iyz = -gInertiaMatrixPos(4,5);
-    float Izx = -gInertiaMatrixPos(3,5);
-
-    double u = velocity[0];
-    double v = velocity[1];
-    double w = velocity[2];
-
-    double p = velocity[3];
-    double q = velocity[4];
-    double r = velocity[5];
-
-
-    RBCoriolis(0) =  m*(-v*r + w*q - xg*(q*q + r*r) +yg*p*q + zg*p*r);
-    RBCoriolis(1) =  m*(-w*p + u*r - yg*(r*r + p*p) +zg*q*r + xg*q*p);
-    RBCoriolis(2) =  m*(-u*q + v*p - zg*(p*p + q*q) +xg*r*p + yg*r*q);
-    RBCoriolis(3) =  (Iz - Iy)*q*r - p*q*Izx + (r*r - q*q)*Iyz + p*r*Ixy + m*(yg*(-u*q + v*p) - zg*(-w*p + u*r));
-    RBCoriolis(4) =  (Ix - Iz)*r*p - q*r*Ixy + (p*p - r*r)*Izx + q*p*Iyz + m*(zg*(-v*r + w*q) - xg*(-u*q + v*p));
-    RBCoriolis(5) =  (Iy - Ix)*p*q - r*p*Iyz + (q*q - p*p)*Ixy + r*q*Izx + m*(xg*(-w*p + u*r) - yg*(-v*r + w*q));
-}
-
-void DynamicModel::calcAddedMassCoriolis(base::Vector6d &AddedMassCoriolis,
-        const base::Vector6d &velocity)
-{
-    double u = velocity[0];
-    double v = velocity[1];
-    double w = velocity[2];
-
-    double p = velocity[3];
-    double q = velocity[4];
-    double r = velocity[5];
-
-    Eigen::MatrixXd gAddedMassMatrix = Eigen::MatrixXd::Zero(6,6);
-
-    for(int i = 0; i < 6; i++)
-    {
-        if(velocity(i) > -0.001)
-            gAddedMassMatrix.block(0 , i , 6, 1) = gAddedMassMatrixPos.block(0 , i , 6, 1);
-        else
-            gAddedMassMatrix.block(0 , i , 6, 1) = gAddedMassMatrixNeg.block(0 , i , 6, 1);
-    }
-
-    double a1 = gAddedMassMatrix(0,0)*u + gAddedMassMatrix(0,1)*v + gAddedMassMatrix(0,2)*w + gAddedMassMatrix(0,3)*p + gAddedMassMatrix(0,4)*q + gAddedMassMatrix(0,5)*r;
-    double a2 = gAddedMassMatrix(0,1)*u + gAddedMassMatrix(1,1)*v + gAddedMassMatrix(1,2)*w + gAddedMassMatrix(1,3)*p + gAddedMassMatrix(1,4)*q + gAddedMassMatrix(1,5)*r;
-    double a3 = gAddedMassMatrix(0,2)*u + gAddedMassMatrix(1,2)*v + gAddedMassMatrix(2,2)*w + gAddedMassMatrix(2,3)*p + gAddedMassMatrix(2,4)*q + gAddedMassMatrix(2,5)*r;
-    double b1 = gAddedMassMatrix(0,3)*u + gAddedMassMatrix(1,3)*v + gAddedMassMatrix(2,3)*w + gAddedMassMatrix(3,3)*p + gAddedMassMatrix(3,4)*q + gAddedMassMatrix(3,5)*r;
-    double b2 = gAddedMassMatrix(0,4)*u + gAddedMassMatrix(1,4)*v + gAddedMassMatrix(2,4)*w + gAddedMassMatrix(3,4)*p + gAddedMassMatrix(4,4)*q + gAddedMassMatrix(4,5)*r;
-    double b3 = gAddedMassMatrix(0,5)*u + gAddedMassMatrix(1,5)*v + gAddedMassMatrix(2,5)*w + gAddedMassMatrix(3,5)*p + gAddedMassMatrix(4,5)*q + gAddedMassMatrix(5,5)*r;
-
-    AddedMassCoriolis(0) = -(-a3*q + a2*r);
-    AddedMassCoriolis(1) = -(a3*p - a1*r);
-    AddedMassCoriolis(2) = -(-a2*p + a1*q);
-    AddedMassCoriolis(3) = -(-a3*v + a2*w - b3*q + b2*r);
-    AddedMassCoriolis(4) = -(a3*u - a1*w + b3*p - b1*r);
-    AddedMassCoriolis(5) = -(-a2*u + a1*v - b2*p + b1*q);
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------
-// New function to correct model forces
-
-void DynamicModel::calcModelCorrection(base::Vector6d &ModelCorrection,
-        const base::Vector6d &velocity)
-{
-
-    double u = velocity[0];
-    //double v = velocity[1];
-    //double w = velocity[2];
-
-    //double p = velocity[3];
-    double q = velocity[4];
-    double r = velocity[5];
-
-    ModelCorrection(0) = 0;
-    ModelCorrection(1) = 0;
-    ModelCorrection(2) = 0;
-    ModelCorrection(3) = 0;
-    ModelCorrection(4) = 0;
-    ModelCorrection(5) = 0;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------
-void DynamicModel::calcGravityBuoyancy(base::Vector6d &gravitybuoyancy,
-        const base::Vector3d &eulerOrientation)
-{
-    float e1 = eulerOrientation(0);
-    float e2 = eulerOrientation(1);
-    float xg = gCenterOfGravity(0);
-    float yg = gCenterOfGravity(1);
-    float zg = gCenterOfGravity(2);
-    float xb = gCenterOfBuoyancy(0);
-    float yb = gCenterOfBuoyancy(1);
-    float zb = gCenterOfBuoyancy(2);
-
-    // In Fossen(1994) the z-axis is taken to be positive downwards (pag 47)
-    gravitybuoyancy(0) = -(gWeight - gBuoyancy) * sin(e2);
-    gravitybuoyancy(1) =  (gWeight - gBuoyancy) * (cos(e2)*sin(e1));
-    gravitybuoyancy(2) =  (gWeight - gBuoyancy) * (cos(e2)*cos(e1));
-    gravitybuoyancy(3) =  ((yg*gWeight - yb*gBuoyancy)*cos(e2)*cos(e1)) -
-            ((zg*gWeight - zb*gBuoyancy) * cos(e2)*sin(e1));
-    gravitybuoyancy(4) =   -((zg*gWeight - zb*gBuoyancy)*sin(e2)) -
-            ((xg*gWeight - xb*gBuoyancy)*cos(e2)*cos(e1));
-    gravitybuoyancy(5) =  ((xg*gWeight - xb*gBuoyancy)*cos(e2)*sin(e1)) +
-            ((yg*gWeight - yb*gBuoyancy)* sin(e2));
-}
-
-void DynamicModel::convBodyToWorld(base::Vector6d &worldCoordinates,
-        const base::Vector6d &bodyCoordinates,
-        const base::Vector3d &eulerAngles)
-{
-    base::Matrix6d transfMatrix = Eigen::MatrixXd::Zero(6,6);
-
-    calcTransfMatrix(transfMatrix, eulerAngles);
-
-    worldCoordinates = transfMatrix * bodyCoordinates;
-}
-
-void DynamicModel::convWorldToBody(base::Vector6d &bodyCoordinates,
-        const base::Vector6d &worldCoordinates,
-        const base::Vector3d &eulerAngles)
-{
-    base::Matrix6d transfMatrix = Eigen::MatrixXd::Zero(6,6);
-    base::Matrix6d invTransfMatrix = Eigen::MatrixXd::Zero(6,6);
-
-    calcTransfMatrix(transfMatrix, eulerAngles);
-    invTransfMatrix = transfMatrix.inverse();
-
-    bodyCoordinates = invTransfMatrix * worldCoordinates;
-}
-
-void DynamicModel::calcTransfMatrix(base::Matrix6d &transfMatrix,
-        const base::Vector3d &eulerAngles)
-{
-    double phi   = eulerAngles[0];
-    double theta = eulerAngles[1];
-    double psi   = eulerAngles[2];
-    base::Matrix3d J1;
-    base::Matrix3d J2;
-
-    J1 << cos(psi)*cos(theta),   -sin(psi)*cos(phi) + cos(psi)*sin(theta)*sin(phi),   sin(psi)*sin(phi) + cos(psi)*cos(phi)*sin(theta),
-            sin(psi)*cos(theta),    cos(psi)*cos(phi) + sin(phi)*sin(theta)*sin(psi),  -cos(psi)*sin(phi) + sin(theta)*sin(psi)*cos(phi),
-            -sin(theta),                        cos(theta)*sin(phi),               cos(theta)*cos(phi)                 ;
-
-
-    J2 <<  1,       sin(phi)*tan(theta),       cos(phi)*tan(theta),
-            0,            cos(phi)      ,       		-sin(phi)	  ,
-            0,       sin(phi)/cos(theta),       cos(phi)/cos(theta);
-
-    transfMatrix.block<3,3>(0,0) = J1;
-    transfMatrix.block<3,3>(3,3) = J2;
-}
-
 
 
 void DynamicModel::updateStates(Eigen::VectorXd &newSystemStates)
@@ -729,356 +547,56 @@ void DynamicModel::updateStates(Eigen::VectorXd &newSystemStates)
     gAngularVelocity    = newSystemStates.segment(9,3);
 }
 
-void DynamicModel::setInertiaMatrix(const base::Matrix6d &inertiaMatrixPos,
-        const base::Matrix6d &inertiaMatrixNeg)
+void DynamicModel::setInertiaMatrix(const base::Matrix6d &inertiaMatrix)
 {
-    gInertiaMatrixPos = inertiaMatrixPos;
-    gInertiaMatrixNeg = inertiaMatrixNeg;
-
-    checkNegativeMatrices(gInertiaMatrixNeg, gInertiaMatrixPos);
+    gInertiaMatrixPos = inertiaMatrix;
 }
 
-void DynamicModel::setCoriolisMatrix(const base::Matrix6d &coriolisMatrixPos,
-        const base::Matrix6d &coriolisMatrixNeg)
+void DynamicModel::setLinDampingMatrix(const base::Matrix6d &linDampingMatrix)
 {
-    gCoriolisMatrixPos = coriolisMatrixPos;
-    gCoriolisMatrixNeg = coriolisMatrixNeg;
-
-    checkNegativeMatrices(gCoriolisMatrixNeg, gCoriolisMatrixPos);
+    gLinDampMatrix = linDampingMatrix;
 }
 
-void DynamicModel::setAddedMassMatrix(const base::Matrix6d &AddedMassMatrixPos,
-        const base::Matrix6d &AddedMassMatrixNeg)
+void DynamicModel::setQuadDampingMatrix(const base::Matrix6d &quadDampingMatrix)
 {
-    gAddedMassMatrixPos = AddedMassMatrixPos;
-    gAddedMassMatrixNeg = AddedMassMatrixNeg;
-
-    checkNegativeMatrices(gAddedMassMatrixNeg, gAddedMassMatrixPos);
+    gQuadDampMatrixPos = quadDampingMatrix;
 }
 
-void DynamicModel::setLiftCoefficients(const base::Vector4d &LiftCoefficients)
+void DynamicModel::setDampingMatrices(const std::vector<base::Matrix6d> &dampingMatrices)
 {
-    gLiftCoefficients = LiftCoefficients;
+    gQuadDampMatrices = dampingMatrices;
 }
 
-void DynamicModel::setLinDampingMatrix(const base::Matrix6d &linDampingMatrixPos,
-        const base::Matrix6d &linDampingMatrixNeg)
-{
-    gLinDampMatrixPos = linDampingMatrixPos;
-    gLinDampMatrixNeg = linDampingMatrixNeg;
-
-    checkNegativeMatrices(gLinDampMatrixNeg, gLinDampMatrixPos);
-}
-
-void DynamicModel::setQuadDampingMatrix(const base::Matrix6d &quadDampingMatrixPos,
-        const base::Matrix6d &quadDampingMatrixNeg)
-{
-    gQuadDampMatrixPos = quadDampingMatrixPos;
-    gQuadDampMatrixNeg = quadDampingMatrixNeg;
-
-    checkNegativeMatrices(gQuadDampMatrixNeg, gQuadDampMatrixPos);
-}
-
-void DynamicModel::checkConstruction(int &controlOrder, double &samplingTime,
+void DynamicModel::checkConstruction(double &samplingTime,
         int &simPerCycle, double &initialTime)
 {
-    std::string textElement;
-    std::string textComparison;
-    bool checkError = false;
-
-    if (controlOrder <= 0)
-    {
-        textElement = "control order";
-        textComparison = "greater than";
-        checkError = true;
-    }
-    else if (samplingTime <= 0)
-    {
-        textElement = "sampling time";
-        textComparison = "greater than";
-        checkError = true;
-    }
-    else if (simPerCycle == 0)
-    {
-        textElement = "number of simulations per cycle";
-        textComparison = "greater than";
-        checkError = true;
-    }
-    else if (initialTime < 0)
-    {
-        textElement = "initial time";
-        textComparison = "greater or equal to";
-        checkError = true;
-    }
-
-    if(checkError)
-    {
-        LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                " The %s should be %s zero.\x1b[0m\n\n"
-                , textElement.c_str(), textComparison.c_str());
-        errorConstruction = true;
-    }
+    if (samplingTime <= 0)
+        throw std::runtime_error("samplingTime must be positive");
+    if (simPerCycle <= 0)
+        throw std::runtime_error("simPerCycle must be positive");
+    if (initialTime < 0)
+        throw std::runtime_error("initialTime must be positive or equal to zero");
 }
 
 void DynamicModel::checkParameters(const underwaterVehicle::Parameters &uwvParameters)
 {
-    std::string textElement;
-    bool checkError = false;
+    if(uwvParameters.sim_per_cycle <= 0)
+        throw std::runtime_error("The sim_per_cycle should be a positive value.");
 
-    errorSetParameters = false;
+    if(uwvParameters.modelType == SIMPLE && uwvParameters.dampMatrices.size() != 2)
+        throw std::runtime_error("in SIMPLE model, dampMatrices should have two elements, the linDampingMatrix and quadDampingMatrix");
 
-    // Checking if the inertia matrices are invertible
-    if(uwvParameters.massMatrix.determinant() == 0)
-    {
-        textElement = "positive";
-        checkError = true;
-    }
-    else if(uwvParameters.massMatrixNeg != Eigen::MatrixXd::Zero(6,6) &&
-            uwvParameters.massMatrixNeg.determinant() == 0)
-    {
-        textElement = "negative";
-        checkError = true;
-    }
-
-    if(checkError && !errorSetParameters)
-    {
-        LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                " The %s inertia matrix is not invertible.\x1b[0m\n\n",
-                textElement.c_str());
-        errorSetParameters = true;
-    }
-
-    // Checking if the thrust configuration matrix has a coherent size
-
-    if (uwvParameters.thruster_control_matrix.rows() != 6 && !errorSetParameters)
-    {
-        LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                " The thruster configuration matrix should have 6"
-                " rows, in order to be equal to the number of degrees"
-                " of freedom. The provided matrix has %i rows.\x1b[0m\n\n"
-                , uwvParameters.thruster_control_matrix.rows());
-
-        errorSetParameters = true;
-    }
-    else if((int)uwvParameters.thruster_control_matrix.cols() != gControlOrder
-            && !errorSetParameters)
-    {
-        LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                " The thruster configuration matrix should have %i"
-                " columns, in order to be equal to the number of control"
-                " inputs. The provided matrix has %i columns.\x1b[0m\n\n"
-                , gControlOrder, uwvParameters.thruster_control_matrix.cols());
-        errorSetParameters = true;
-    }
-
-    // Checking if other parameters were properly set (no negative values)
-
-    checkError = false;
-    for(uint i = 0; i < uwvParameters.thrusterVoltage.size(); i++)
-    {
-        if(uwvParameters.thrusterVoltage[i] < 0)
-        {
-            textElement = "thrusterVoltage";
-            checkError = true;
-            break;
-        }
-    }
-
-    for(uint i = 0; i < uwvParameters.thruster_coefficients_pwm.size(); i++)
-    {
-        if(uwvParameters.thruster_coefficients_pwm[i].positive < 0)
-        {
-            textElement = "thruster_coefficient_pwm[i].positive";
-            checkError = true;
-            break;
-        }
-        else if(uwvParameters.thruster_coefficients_pwm[i].negative < 0)
-        {
-            textElement = "thruster_coefficient_pwm[i].negative";
-            checkError = true;
-            break;
-        }
-    }
-
-    for(uint i = 0; i < uwvParameters.linear_thruster_coefficients_pwm.size(); i++)
-    {
-        if(uwvParameters.linear_thruster_coefficients_pwm[i].positive < 0)
-        {
-            textElement = "linear_thruster_coefficients_pwm[i].positive";
-            checkError = true;
-            break;
-        }
-        else if(uwvParameters.linear_thruster_coefficients_pwm[i].negative < 0)
-        {
-            textElement = "linear_thruster_coefficients_pwm[i].negative";
-            checkError = true;
-            break;
-        }
-    }
-
-    for(uint i = 0; i < uwvParameters.square_thruster_coefficients_pwm.size(); i++)
-    {
-        if(uwvParameters.square_thruster_coefficients_pwm[i].positive < 0)
-        {
-            textElement = "square_thruster_coefficients_pwm[i].positive";
-            checkError = true;
-            break;
-        }
-        else if(uwvParameters.square_thruster_coefficients_pwm[i].negative < 0)
-        {
-            textElement = "square_thruster_coefficients_pwm[i].negative";
-            checkError = true;
-            break;
-        }
-    }
-
-    for(uint i = 0; i < uwvParameters.thruster_coefficient_rpm.size(); i++)
-    {
-        if(uwvParameters.thruster_coefficient_rpm[i].positive < 0)
-        {
-            textElement = "thruster_coefficient_rpm[i].positive";
-            checkError = true;
-            break;
-        }
-        else if(uwvParameters.thruster_coefficient_rpm[i].negative < 0)
-        {
-            textElement = "thruster_coefficient_rpm[i].negative";
-            checkError = true;
-            break;
-        }
-    }
-
-    if(checkError && !errorSetParameters)
-    {
-        LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                " The %s should be a positive value. If this parameter"
-                " is irrelevant for your purpose, just make it null."
-                "\x1b[0m\n\n", textElement.c_str());
-        errorSetParameters = true;
-    }
-
-    if(uwvParameters.sim_per_cycle <= 0 && !errorSetParameters)
-    {
-        LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                " The sim_per_cycle should be a positive value."
-                "\x1b[0m\n\n");
-        errorSetParameters = true;
-    }
+    if(uwvParameters.modelType == COMPLEX && uwvParameters.dampMatrices.size() != 6)
+        throw std::runtime_error("in COMPLEX model, dampMatrices should have six elements, one quadDampingMatrix / DOF");
 }
 
-void DynamicModel::checkPositiveMatrices(void)
+
+void DynamicModel::checkControlInput(const base::LinearAngular6DCommand &controlInput) const
 {
-    std::string textElement;
-    bool checkError = false;
-
-    if (gInertiaMatrixPos == Eigen::MatrixXd::Zero(6,6))
+    for (size_t i=0; i<3; i++)
     {
-        textElement = "positive inertia matrix";
-        checkError= true;
-    }
-    else if (gThrustConfigMatrix.size() == 0)
-    {
-        textElement = "thrust configuration matrix";
-        checkError= true;
-    }
-
-    if(checkError)
-    {
-        LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                " The %s was not set.\x1b[0m\n\n", textElement.c_str());
-        errorStatus = true;
-    }
-}
-
-void DynamicModel::checkNegativeMatrices(base::Matrix6d &negativeMatrix,
-        const base::Matrix6d &positiveMatrix)
-{
-    if (negativeMatrix == Eigen::MatrixXd::Zero(6, 6))
-        negativeMatrix = positiveMatrix;
-}
-
-void DynamicModel::checkControlInput(const base::samples::Joints &controlInput,
-        std::string jointsElement)
-{
-    int inputSize = controlInput.size();
-    std::string textElement;
-    bool checkError = false;
-
-    // Checking controlInput size
-    if(!errorStatus)
-    {
-        if(jointsElement == "effort")
-        {
-            if (inputSize != 6)
-            {
-                LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                        " The controlInput should have 6 elements, one for each"
-                        " degree of freedom. Currently, it has %i elements."
-                        " \x1b[0m\n\n", inputSize);
-                errorControlInput = true;
-            }
-        }
-        else
-        {
-            if (inputSize != gControlOrder)
-            {
-                LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                        " The system has %i control inputs, and not %i like it was"
-                        " provided by the controlInput argument.\x1b[0m\n\n"
-                        , gControlOrder, inputSize);
-                errorControlInput = true;
-            }
-        }
-    }
-
-    // Checking if the proper field is set
-    if(!errorControlInput && !errorStatus)
-    {
-        if(jointsElement == "effort")
-        {
-            for (uint i = 0; i < controlInput.size(); i++)
-            {
-                if(!controlInput.elements[i].hasEffort())
-                {
-                    textElement = jointsElement;
-                    checkError = true;
-                    break;
-                }
-            }
-        }
-        else if(jointsElement == "raw")
-        {
-            for (uint i = 0; i < controlInput.size(); i++)
-            {
-                if(!controlInput.elements[i].hasRaw())
-                {
-                    textElement = jointsElement;
-                    checkError = true;
-                    break;
-                }
-            }
-        }
-        else if(jointsElement == "speed")
-        {
-            for (uint i = 0; i < controlInput.size(); i++)
-            {
-                if(!controlInput.elements[i].hasSpeed())
-                {
-                    textElement = jointsElement;
-                    checkError = true;
-                    break;
-                }
-            }
-        }
-
-        // If there was an error and the errorControlInput is still not set...
-        if(checkError)
-        {
-            LOG_ERROR("\n\n\x1b[31m (Library: uwv_dynamic_model.cpp)"
-                    " The field %s of the controlInput was not set."
-                    " \x1b[0m\n\n", textElement.c_str());
-            errorControlInput = true;
-        }
+        if(std::isnan(controlInput.linear[i]) || std::isnan(controlInput.angular[i]))
+            throw runtime_error("control input is nan");
     }
 }
 

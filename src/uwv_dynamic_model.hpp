@@ -182,9 +182,7 @@ protected:
      * Calculates the vehicle acceleration based on the current velocity,
      * on the control input (efforts) and on the mathematical model.
      * NOTE: This function should be used only by the RK4 Integrator.
-     * @return velocityAndAcceleration - Variable used to return the new
-     *                                  accelerations together with the
-     *                                  current velocities
+     * @return velocityAndAcceleration, linear and angular
      * @param velocity - Current velocities
      * @param controlInput - Current control input
      */

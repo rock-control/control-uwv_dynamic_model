@@ -244,14 +244,13 @@ private:
      */
     base::Vector6d calcCoriolisEffect( const base::Matrix6d &inertiaMatrix, const base::Vector6d &velocity) const;
 
-    /** Compute quadratic effect according mode
+    /** Compute damping effect
      *
-     * @param vector of damping matrices
+     * @param uwv_paramters
      * @param velocity vector
-     * @param modelType
-     * @return dampingMatrix
+     * @return vecotr of damping effect
      */
-    base::Vector6d caclDampingEffect( const std::vector<base::Matrix6d> &dampMatrices, const base::Vector6d &velocity, const ModelType &modelType) const;
+    base::Vector6d caclDampingEffect( const UWVParameters &uwv_parameters, const base::Vector6d &velocity) const;
 
     /** Compute quadratic damping for the COMPLEX mode
      *
@@ -288,6 +287,13 @@ private:
      * @return forces and torques vector
      */
     base::Vector6d calcQuadDamping( const base::Matrix6d &quadDampMatrix, const base::Vector6d &velocity) const;
+
+    /** Compute gravity and bouyancy terms
+     * @param current orientation
+     * @param uwv_parametes
+     * @return vecto ofr forces and torques
+     */
+    base::Vector6d calcGravityBuoyancy(const Eigen::Quaterniond& orientation, const UWVParameters &uwv_parameters) const;
 
     /** Compute gravity and buoyancy terms
      *

@@ -75,8 +75,7 @@ void DynamicModel::sendEffortCommands(const base::LinearAngular6DCommand &contro
 
 }
 
-void DynamicModel::calcAcceleration(Eigen::VectorXd &velocityAndAcceleration,
-        const base::Vector6d &velocity,
+Eigen::VectorXd DynamicModel::calcAcceleration( const base::Vector6d &velocity,
         const base::Vector6d &controlInput)
 {
     /**
@@ -90,62 +89,34 @@ void DynamicModel::calcAcceleration(Eigen::VectorXd &velocityAndAcceleration,
      * [5] = r		[11] = r_dot	(YAW)
      *
      */
-
-    // Forces and Moments vectors
-    base::Matrix6d invInertiaMatrix  = Eigen::MatrixXd::Zero(6,6);
-    base::Vector6d linDamping        = Eigen::VectorXd::Zero(6);
-    base::Vector6d quadDamping       = Eigen::VectorXd::Zero(6);
-    base::Vector6d gravityBuoyancy   = Eigen::VectorXd::Zero(6);
-    base::Vector6d worldVelocity     = Eigen::VectorXd::Zero(6);
-    base::Vector6d acceleration      = Eigen::VectorXd::Zero(6);
-
-    // Calculating the efforts for each one of the hydrodynamics effects
-    calcInvInertiaMatrix(invInertiaMatrix, velocity);
-    calcLinDamping(linDamping, velocity);
-    calcQuadDamping(quadDamping, velocity);
-    calcGravityBuoyancy(gravityBuoyancy, gEulerOrientation);
+    Eigen::VectorXd velocityAndAcceleration = Eigen::VectorXd::Zero(gSystemOrder);
 
     // Calculating the acceleration based on all the hydrodynamics effects
-    switch(gModelType)
+    base::Vector6d acceleration = Eigen::VectorXd::Zero(6);
+    switch(gUwvParameters.modelType)
     {
     case SIMPLE:
-        acceleration  = invInertiaMatrix * ( gEfforts - linDamping - quadDamping - gravityBuoyancy);
+        acceleration  = gInvInertiaMatrix * ( gEfforts - caclDampingEffect(gUwvParameters, velocity) - calcGravityBuoyancy(gOrientation, gUwvParameters));
         break;
     case COMPLEX:
-        base::Vector6d coriolisEffect    = Eigen::VectorXd::Zero(6);
-        base::Vector6d RBCoriolis        = Eigen::VectorXd::Zero(6);
-        base::Vector6d AddedMassCoriolis = Eigen::VectorXd::Zero(6);
-        base::Vector6d LiftEffect        = Eigen::VectorXd::Zero(6);
-        base::Vector6d ModelCorrection   = Eigen::VectorXd::Zero(6);
-        calcCoriolisEffect(coriolisEffect, velocity);
-        calcRBCoriolis(RBCoriolis, velocity);
-        calcAddedMassCoriolis(AddedMassCoriolis, velocity);
-        calcLiftEffect(LiftEffect, velocity);
-        calcModelCorrection(ModelCorrection, velocity);
-
-        acceleration  = invInertiaMatrix * ( gEfforts - coriolisEffect - RBCoriolis - AddedMassCoriolis - LiftEffect  -
-                linDamping - quadDamping - gravityBuoyancy - ModelCorrection);
+        acceleration  = gInvInertiaMatrix * ( gEfforts- calcCoriolisEffect(gUwvParameters.inertiaMatrix, velocity) - caclDampingEffect(gUwvParameters, velocity) - calcGravityBuoyancy(gOrientation, gUwvParameters));
         break;
     }
 
     // Converting the body velocity to world velocity. This is necessary because
     // when the integration takes place in order to find the position, the velocity
     // should be expressed in the world frame, just like the position is.
-    convBodyToWorld(worldVelocity, velocity, gEulerOrientation);
+    base::Vector6d worldVelocity = convBodyToWorld(velocity, gOrientation);
 
     // Updating the RK4 vector with the velocity and acceleration values
-    for (int i = 0; i < 6; i++)
-    {
-        velocityAndAcceleration[i] = worldVelocity[i];
-        velocityAndAcceleration[i+6] = acceleration[i];
-    }
+    velocityAndAcceleration.head(6) = worldVelocity;
+    velocityAndAcceleration.tail(6) = acceleration;
 
     // Updating global acceleration variables
-    for(int i = 0; i < 3; i++)
-    {
-        gLinearAcceleration[i]  = acceleration[i];
-        gAngularAcceleration[i] = acceleration[i+3];
-    }
+    gLinearAcceleration  = acceleration.head(3);
+    gAngularAcceleration = acceleration.tail(3);
+
+    return velocityAndAcceleration;
 }
 
 void DynamicModel::setUWVParameters(const UWVParameters &uwvParameters)
@@ -390,12 +361,12 @@ base::Vector6d DynamicModel::calcCoriolisEffect(const base::Matrix6d &inertiaMat
     return coriloisEffect;
 }
 
-base::Vector6d DynamicModel::caclDampingEffect( const std::vector<base::Matrix6d> &dampMatrices, const base::Vector6d &velocity, const ModelType &modelType) const
+base::Vector6d DynamicModel::caclDampingEffect( const UWVParameters &uwv_parameters, const base::Vector6d &velocity) const
 {
-    if(modelType == SIMPLE)
-        return caclSimpleDamping(dampMatrices, velocity);
-    else if(modelType == COMPLEX)
-        return caclGeneralQuadDamping(dampMatrices, velocity);
+    if(uwv_parameters.modelType == SIMPLE)
+        return caclSimpleDamping(uwv_parameters.dampMatrices, velocity);
+    else if(uwv_parameters.modelType == COMPLEX)
+        return caclGeneralQuadDamping(uwv_parameters.dampMatrices, velocity);
     else
         throw std::runtime_error("unknown modelType.");
 }
@@ -436,6 +407,11 @@ base::Vector6d DynamicModel::calcLinDamping(const base::Matrix6d &linDampMatrix,
 base::Vector6d DynamicModel::calcQuadDamping( const base::Matrix6d &quadDampMatrix, const base::Vector6d &velocity) const
 {
     return quadDampMatrix * velocity.cwiseAbs().asDiagonal() * velocity;
+}
+
+base::Vector6d DynamicModel::calcGravityBuoyancy(const Eigen::Quaterniond& orientation, const UWVParameters &uwv_parameters) const
+{
+    return calcGravityBuoyancy(orientation, uwv_parameters.weight, uwv_parameters.buoyancy, uwv_parameters.distance_body2centerofgravity, uwv_parameters.distance_body2centerofbuoyancy);
 }
 
 base::Vector6d DynamicModel::calcGravityBuoyancy( const Eigen::Quaterniond& orientation,

@@ -34,6 +34,10 @@ RK4_SIM::RK4_SIM(double integrationStep)
     checkConstruction(integrationStep);
 }
 
+RK4_SIM::~RK4_SIM()
+{
+}
+
 void RK4_SIM::calcStates(Eigen::VectorXd &systemStates,
         double &currentTime, const base::Vector6d &controlInput)
 {

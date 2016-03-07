@@ -11,6 +11,7 @@
 #define RK4_INTEGRATOR_HPP
 
 #include <base/Eigen.hpp>
+#include <stdexcept>
 
 namespace underwaterVehicle
 {
@@ -22,6 +23,8 @@ public:
      * Constructor
      */
     RK4_SIM( double integrationStep);
+
+    ~RK4_SIM();
 
     /**
      *	Performs one step simulation

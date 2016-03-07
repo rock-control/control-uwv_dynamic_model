@@ -41,13 +41,8 @@ enum ModelType
 /**
  * Structure that contains all the necessary information for simulating the motion model
  */
-struct Parameters
+struct UWVParameters
 {
-    /**
-     * Number of RK4 iterations per sampling interval
-     */
-    int sim_per_cycle;
-
     /**
      * Type of model to be used
      */
@@ -87,13 +82,8 @@ struct Parameters
      */
     double buoyancy;
 
-    /**
-     * Initial condition used for simulation
-     */
-    double initial_condition[12];
 
-    Parameters():
-        sim_per_cycle(10),
+    UWVParameters():
         modelType(SIMPLE),
         inertiaMatrix(base::Matrix6d::Identity()),
         distance_body2centerofbuoyancy(Eigen::VectorXd::Zero(3)),
@@ -104,8 +94,6 @@ struct Parameters
         dampMatrices.resize(2);
         for(int i = 0; i < dampMatrices.size(); i++)
             dampMatrices[i] = Eigen::MatrixXd::Zero(6,6);
-        for(int i = 0; i < 12; i++)
-            initial_condition[i] = 0;
     };
 };
 

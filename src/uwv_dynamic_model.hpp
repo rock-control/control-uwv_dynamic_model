@@ -38,17 +38,19 @@ public:
     DynamicModel(double samplingTime = 0.01,
             int simPerCycle = 10, double initialTime = 0.0);
 
+    ~DynamicModel();
+
     /**
-     * Initializes the model parameters. Run this function before sending control
-     * commands to the model.
+     * Function for sending Effort commands to the model.
+     * @param controlInput - Effort commands that should be applied to the model
      */
-    bool initParameters(const underwaterVehicle::Parameters &uwvParameters);
+    void sendEffortCommands(const base::LinearAngular6DCommand &controlInput);
 
     /**
      * Sets the general UWV parameters
      * @param uwvParamaters - Structures containing the uwv parameters
      */
-    bool setUWVParameters(const underwaterVehicle::Parameters &uwvParameters);
+    void setUWVParameters(const UWVParameters &uwvParameters);
 
     /**
      * Resets position, orientation and velocities of the model
@@ -65,7 +67,7 @@ public:
      * Sets the current orientation of the vehicle
      * * @param quatOrientation - New orientation value
      */
-    void setOrientation(const Eigen::Quaterniond &quatOrientation);
+    void setOrientation(const base::Orientation &orientation);
 
     /**
      * Sets the current linear velocity of the vehicle
@@ -80,12 +82,6 @@ public:
     void setAngularVelocity(const base::Vector3d &angularVelocity);
 
     /**
-     * Sets the model type for the simulation (simple or complex)
-     * @param modelType - Simple or complex model
-     */
-    void setModelType(const underwaterVehicle::ModelType &modelType);
-
-    /**
      * Sets the samling time
      * * @param samplingTime - New sampling time value
      */
@@ -95,7 +91,7 @@ public:
      * Gets the underwater vehicle parameters
      * @return - Underwater vehicle parameters
      */
-    underwaterVehicle::Parameters getUWVParameters(void) const;
+    UWVParameters getUWVParameters(void) const;
 
     /**
      * Gets the position
@@ -140,6 +136,18 @@ public:
     base::Vector3d getAngularAcceleration(void) const;
 
     /**
+     * Set system state (pose and velocity)
+     * @param RigidBodyState state
+     */
+    void setRigidBodyState(base::samples::RigidBodyState const &state);
+
+    /**
+     * Gets the system state (pose and velocity)
+     * @return systemState as RigidBodyState
+     */
+    base::samples::RigidBodyState getRigidBodyState(void) const;
+
+    /**
      * Gets the the system states (pose and velocity)
      * @return systemStates - System states vector (size = 12)
      */
@@ -174,7 +182,34 @@ public:
      * @param eulerAngles - Euler angles vector
      * @return quaternion - Quaternion variable
      */
-    static base::Quaterniond eulerToQuaternion( const base::Vector3d &eulerAngles) const;
+    static base::Orientation eulerToQuaternion( base::Vector3d eulerAngles);
+
+    /**
+     * Converts the Body-Frame coordinates into World-Frame coordinates.
+     * @param bodyCoordinates - Vector that contains the body coordinates
+     * @param orientation - Current quaternion necessary to do the frame transformation
+     * @return worldCoordinates - Vector with the world coordinates
+     */
+    static base::Vector6d convBodyToWorld( const base::Vector6d &bodyCoordinates,
+            const base::Orientation &orientation);
+
+    /**
+     * Converts the World-Frame coordinates into Body-Frame coordinates.
+     * @param worldCoordinates - Vector that contains the world coordinates
+     * @param orientation - Current quaternion necessary to do the frame transformation
+     * @return bodyCoordinates - Vector that will receive the body coordinates
+     */
+    static base::Vector6d convWorldToBody( const base::Vector6d &worldCoordinates,
+            const base::Orientation &orientation);
+
+    /**
+     * Calculates the transformation matrix that is used to transform
+     * coordinates from Body-Frame to World-Frame.
+     * ( worldFrame = transMatrix * bodyFrame )
+     * @param orientation - Get current euler angles
+     * @return transfMatrix - Transformation matrix
+     */
+    static base::Matrix6d calcTransfMatrix( const base::Orientation &orientation);
 
 protected:
 
@@ -216,14 +251,23 @@ private:
      * @param modelType
      * @return dampingMatrix
      */
-    base::Vector6d caclDampingEffect( const std::vector<base::Matrix6d> &quadDampMatrices, const base::Vector6d &velocity, const ModelType &modelType) const;
+    base::Vector6d caclDampingEffect( const std::vector<base::Matrix6d> &dampMatrices, const base::Vector6d &velocity, const ModelType &modelType) const;
 
     /** Compute quadratic damping for the COMPLEX mode
      *
      *  Based on the general 6DOF coupled quadratic drag matrix proposed by McFarland[2013]
      * @param vector of 6 quadDamping matrices
      * @param velocity vector
-     * @return dampingMatrix
+     * @return dampingEffect
+     */
+    base::Vector6d caclSimpleDamping( const std::vector<base::Matrix6d> &dampMatrices, const base::Vector6d &velocity) const;
+
+    /** Compute damping for the SIMPLE mode
+     *
+     *  Based on the usual linear + quadratic damping proposed by Fossen[1994].
+     * @param vector of damping matrices
+     * @param velocity vector
+     * @return dampingEffect
      */
     base::Vector6d caclGeneralQuadDamping( const std::vector<base::Matrix6d> &quadDampMatrices, const base::Vector6d &velocity) const;
 
@@ -260,32 +304,9 @@ private:
 
     /**
      * Updates the current states (pose and velocity)
+     * @param newSystemStates as vector of states
      */
     void updateStates(Eigen::VectorXd &newSystemStates);
-
-    /**
-     * Sets the Inertia matrix (inertia + added mass matrix)
-     * @param inertiaMatrix - Inertia matrix
-     */
-    void setInertiaMatrix(const base::Matrix6d &inertiaMatrix);
-
-    /**
-     * Sets the Linear Damping matrix for SIMPLE CASE
-     * @param linDampingMatrix - Linear Damping matrix
-     */
-    void setLinDampingMatrix(const base::Matrix6d &linDampingMatrix);
-
-    /**
-     * Sets the Quadratic Damping matrix
-     * @param quadDampingMatrixPos - Quadratic Damping matrix
-     */
-    void setQuadDampingMatrix(const base::Matrix6d &quadDampingMatrix);
-
-    /**
-     * Sets the Damping matrices
-     * @param dampingMatrices - Vector of Damping matrix
-     */
-    void setDampingMatrices(const std::vector<base::Matrix6d> &dampingMatrices);
 
     /**
      * FUNCTIONS FOR CHECKING FOR USER'S MISUSE
@@ -299,29 +320,12 @@ private:
     /**
      * Determinant of inertiaMatrix must be different from zero
      */
-    void checkParameters(const underwaterVehicle::Parameters &pwvParameters);
+    void checkParameters(const UWVParameters &pwvParameters);
 
     /**
      * Check control input.
      */
     void checkControlInput(const base::LinearAngular6DCommand &controlInput) const;
-
-    /**
-     * Checks if the positive matrices were set.
-     */
-    void checkPositiveMatrices(void);
-
-    /**
-     * Checks if the negativeMatrix was set. If not, its value will be replaced by positiveMatrix.
-     */
-    void checkNegativeMatrices(base::Matrix6d &negativeMatrix, const base::Matrix6d &positiveMatrix);
-
-    /**
-     * Checks if any error flag is activated
-     */
-    void checkErrors(void);
-
-    underwaterVehicle::ModelType gModelType;
 
 
     /**
@@ -332,7 +336,7 @@ private:
      * Pose variables
      */
     base::Vector3d gPosition;
-    base::Quaterniond gOrientation;
+    base::Orientation gOrientation;
 
     /**
      * Velocity variables
@@ -356,7 +360,6 @@ private:
      */
     double gCurrentTime;
 
-
     /**
      * SYSTEM'S DIMENSION
      */
@@ -364,7 +367,7 @@ private:
     /**
      * Number of system states
      */
-    int gSystemOrder;
+    static const int gSystemOrder = 12;
 
     /**
      * SIMULATION PARAMETERS
@@ -377,49 +380,12 @@ private:
      * MODEL PARAMETERS
      */
 
-    /**
-     * Inertia matrix
-     */
-    base::Matrix6d gInertiaMatrix;
+    UWVParameters gUwvParameters;
 
     /**
      * Inverse of inertia matrix
      */
     base::Matrix6d gInvInertiaMatrix;
-
-    /**
-     * Linear damping matrix for SIMPLE model type
-     */
-    base::Matrix6d gLinDampMatrix;
-
-    /**
-     * Quadratic damping matrix for SIMPLE model type
-     */
-    base::Matrix6d gQuadDampMatrix;
-
-    /**
-     * Quadratic damping matrices for COMPLEX model type
-     */
-    std::vector<base::Matrix6d> gQuadDampMatrices;
-
-    /**
-     * RESTORING FORCES PARAMETERS
-     */
-
-    double gWeight;
-    double gBuoyancy;
-    base::Vector3d gCenterOfGravity;
-    base::Vector3d gCenterOfBuoyancy;
-
-    /**
-     * ERROR VARIABLES
-     */
-    bool errorModelInit;
-    bool errorConstruction;
-    bool errorControlInput;
-    bool errorSetParameters;
-    bool errorStatus;
-
 };
 };
 #endif

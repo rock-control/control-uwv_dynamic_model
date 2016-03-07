@@ -385,8 +385,9 @@ base::Vector6d DynamicModel::calcCoriolisEffect(const base::Matrix6d &inertiaMat
 
     base::Vector6d coriloisEffect;
     base::Vector6d prod = inertiaMatrix * velocity;
-    return coriloisEffect << prod.head(3).cross(velocity.tail(3)),
-                prod.head(3).cross(velocity.head(3)) + prod.tail(3).cross(velocity.tail(3));
+    coriloisEffect << prod.head<3>().cross(velocity.tail<3>()),
+                prod.head<3>().cross(velocity.head<3>()) + prod.tail<3>().cross(velocity.tail<3>());
+    return coriloisEffect;
 }
 
 base::Vector6d DynamicModel::caclDampingEffect( const std::vector<base::Matrix6d> &dampMatrices, const base::Vector6d &velocity, const ModelType &modelType) const
@@ -411,7 +412,7 @@ base::Vector6d DynamicModel::caclGeneralQuadDamping( const std::vector<base::Mat
 
     base::Matrix6d dampMatrix = base::Matrix6d::Zero();
     for(size_t i=0; i < quadDampMatrices.size(); i++)
-        dampMatrix += quadDampMatrices[i] * velocity.abs()[i];
+        dampMatrix += quadDampMatrices[i] * velocity.cwiseAbs()[i];
 
     return dampMatrix * velocity;
 }
@@ -434,7 +435,7 @@ base::Vector6d DynamicModel::calcLinDamping(const base::Matrix6d &linDampMatrix,
 
 base::Vector6d DynamicModel::calcQuadDamping( const base::Matrix6d &quadDampMatrix, const base::Vector6d &velocity) const
 {
-    return quadDampMatrix * velocity.abs().asDiagonal() * velocity;
+    return quadDampMatrix * velocity.cwiseAbs().asDiagonal() * velocity;
 }
 
 base::Vector6d DynamicModel::calcGravityBuoyancy( const Eigen::Quaterniond& orientation,
@@ -448,8 +449,9 @@ base::Vector6d DynamicModel::calcGravityBuoyancy( const Eigen::Quaterniond& orie
      *  e3 = [0; 0; 1]
      */
     base::Vector6d gravityEffect;
-    return gravityEffect << orientation.inverse() * Eigen::Vector3d(0, 0, (weight-bouyancy)),
+    gravityEffect << orientation.inverse() * Eigen::Vector3d(0, 0, (weight-bouyancy)),
             (cg*weight - cb*bouyancy).cross(orientation.inverse() * Eigen::Vector3d(0, 0, 1));
+    return gravityEffect;
 }
 
 

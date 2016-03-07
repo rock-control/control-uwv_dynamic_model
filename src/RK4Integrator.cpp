@@ -16,7 +16,7 @@
  * X1' = X2 
  * X2' = -aX2 - bX1 + cF 
  *
- * If your system is laready in the form x' = f(t,x,u) you dont have 
+ * If your system is already in the form x' = f(t,x,u) you dont have
  * to do any transformation.
  */
 

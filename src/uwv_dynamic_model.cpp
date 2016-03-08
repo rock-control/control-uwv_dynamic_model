@@ -483,6 +483,11 @@ void DynamicModel::checkParameters(const UWVParameters &uwvParameters)
 
     if(uwvParameters.modelType == COMPLEX && uwvParameters.dampMatrices.size() != 6)
         throw std::runtime_error("in COMPLEX model, dampMatrices should have six elements, one quadDampingMatrix / DOF");
+
+    if(uwvParameters.weight <= 0)
+        throw std::runtime_error("weight must be a positive value");
+    if(uwvParameters.buoyancy <= 0)
+        throw std::runtime_error("buoyancy must be a positive value");
 }
 
 
@@ -490,8 +495,8 @@ void DynamicModel::checkControlInput(const base::LinearAngular6DCommand &control
 {
     for (size_t i=0; i<3; i++)
     {
-        if(std::isnan(controlInput.linear[i]) || std::isnan(controlInput.angular[i]))
-            throw std::runtime_error("control input is nan");
+        if(base::isUnset(controlInput.linear[i]) || base::isUnset(controlInput.angular[i]))
+            throw std::runtime_error("control input is unset");
     }
 }
 

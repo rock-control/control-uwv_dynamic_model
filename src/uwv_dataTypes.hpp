@@ -88,8 +88,8 @@ struct UWVParameters
         inertiaMatrix(base::Matrix6d::Identity()),
         distance_body2centerofbuoyancy(Eigen::VectorXd::Zero(3)),
         distance_body2centerofgravity(Eigen::VectorXd::Zero(3)),
-        weight(0),
-        buoyancy(0)
+        weight(1),
+        buoyancy(1)
     {
         dampMatrices.resize(2);
         for(int i = 0; i < dampMatrices.size(); i++)

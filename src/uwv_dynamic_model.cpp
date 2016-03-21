@@ -56,11 +56,8 @@ void DynamicModel::sendEffortCommands(const base::LinearAngular6DCommand &contro
     checkControlInput(controlInput);
 
     // Puts the efforts in a vector
-    for (int i = 0; i < 3; i++)
-    {
-        gEfforts[i] = controlInput.linear[i];
-        gEfforts[i+3] = controlInput.angular[i];
-    }
+    gEfforts.head(3) = controlInput.linear;
+    gEfforts.tail(3) = controlInput.angular;
 
     // Gets a vector with the current system states (pose and velocities)
     Eigen::VectorXd systemStates = Eigen::VectorXd::Zero(gSystemOrder);
@@ -68,7 +65,7 @@ void DynamicModel::sendEffortCommands(const base::LinearAngular6DCommand &contro
 
     // Performs iterations to calculate the new system's states
     for (int ii=0; ii < gSimPerCycle; ii++)
-        calcStates(systemStates, gCurrentTime, gEfforts);
+        systemStates = calcStates(systemStates, gCurrentTime, gEfforts);
 
     // Updates the new system's states
     updateStates(systemStates);
@@ -493,11 +490,8 @@ void DynamicModel::checkParameters(const UWVParameters &uwvParameters)
 
 void DynamicModel::checkControlInput(const base::LinearAngular6DCommand &controlInput) const
 {
-    for (size_t i=0; i<3; i++)
-    {
-        if(base::isUnset(controlInput.linear[i]) || base::isUnset(controlInput.angular[i]))
-            throw std::runtime_error("control input is unset");
-    }
+    if(controlInput.angular.hasNaN() || controlInput.linear.hasNaN() )
+        throw std::runtime_error("control input is unset");
 }
 
 };

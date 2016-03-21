@@ -29,7 +29,7 @@ public:
     /**
      *	Performs one step simulation
      */
-    void calcStates(Eigen::VectorXd &systemStates,
+    Eigen::VectorXd calcStates(const Eigen::VectorXd &systemStates,
             double &currentTime,
             const base::Vector6d &controlInput);
 
@@ -90,7 +90,7 @@ private:
     inline void updateCoefficient(Eigen::VectorXd &k);
 
     void checkConstruction(double &integrationStep);
-    void checkInputs(Eigen::VectorXd &systemStates,
+    void checkInputs(const Eigen::VectorXd &systemStates,
             double &currentTime,
             const base::Vector6d &controlInput);
 };

@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE( normal )
 
 BOOST_AUTO_TEST_CASE( unset_command )
 {
-    underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+    underwaterVehicle::DynamicModel vehicle(0.1, 8, 1);
     underwaterVehicle::UWVParameters parameters = loadParameters();
 
     BOOST_REQUIRE_NO_THROW(vehicle.setUWVParameters(parameters));

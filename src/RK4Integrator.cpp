@@ -24,102 +24,48 @@
 #include "RK4Integrator.hpp"
 #include <math.h>
 #include <base/Logging.hpp>
+#include <iostream>
 
 namespace underwaterVehicle
 {
-RK4_SIM::RK4_SIM(double integrationStep)
-:   gSystemOrder(12),
+RK4_SIM::RK4_SIM(double integrationStep, int systemOrder)
+:   gSystemOrder(systemOrder),
     gIntegStep(integrationStep)
 {
-    checkConstruction(integrationStep);
+    checkConstruction(integrationStep, systemOrder);
 }
 
 RK4_SIM::~RK4_SIM()
 {
 }
 
-Eigen::VectorXd RK4_SIM::calcStates(const Eigen::VectorXd &systemStates,
-        double &currentTime, const base::Vector6d &controlInput)
+Eigen::VectorXd RK4_SIM::calcStates(const Eigen::VectorXd &systemStates, const base::Vector6d &controlInput)
 {
     /**
      * systemStates:
      *
-     * [0] = x			[6]  = u	(SURGE)
-     * [1] = y			[7]  = v	(SWAY)
-     * [2] = z			[8]  = w	(HEAVE)
-     * [3] = theta  	[9]  = p	(ROLL)
-     * [4] = phi		[10] = q	(PITCH)
-     * [5] = sigma		[11] = r	(YAW)
+     * [0] = x			[7]  = u	(SURGE)
+     * [1] = y			[8]  = v	(SWAY)
+     * [2] = z			[9]  = w	(HEAVE)
+     * [3] = e1  	    [10]  = p	(ROLL)
+     * [4] = e2		    [11] = q	(PITCH)
+     * [5] = e3         [12] = r    (YAW)
+     * [6] = n
      *
      */
+    checkInputs(systemStates, controlInput);
     Eigen::VectorXd system_states = systemStates;
-    base::Vector6d velocity = systemStates.tail(6);
 
     // Runge-Kuta coefficients
-    Eigen::VectorXd k1 = Eigen::VectorXd::Zero(gSystemOrder);
-    Eigen::VectorXd k2 = Eigen::VectorXd::Zero(gSystemOrder);
-    Eigen::VectorXd k3 = Eigen::VectorXd::Zero(gSystemOrder);
-    Eigen::VectorXd k4 = Eigen::VectorXd::Zero(gSystemOrder);
-
-    // Calculating Runge-Kutta coefficients
-    k1 = calcK1(    velocity, controlInput);
-    k2 = calcK2(k1, velocity, controlInput);
-    k3 = calcK3(k2, velocity, controlInput);
-    k4 = calcK4(k3, velocity, controlInput);
-
-    // Updating simulation time
-    currentTime += gIntegStep;
+    Eigen::VectorXd k1 = DERIV(system_states,controlInput);
+    Eigen::VectorXd k2 = DERIV(system_states + gIntegStep/2*k1, controlInput);
+    Eigen::VectorXd k3 = DERIV(system_states + gIntegStep/2*k2, controlInput);
+    Eigen::VectorXd k4 = DERIV(system_states + gIntegStep*k3, controlInput);
 
     // Calculating the system states
     system_states += (gIntegStep/6) * (k1 + 2*k2 + 2*k3 + k4);
 
-    // Checking if the angle is between [-PI, PI], and if not, doing the
-    // necessary corrections
-    for (int i = 0; i < 3; i++)
-    {
-        if (system_states[i+3] > M_PI)
-            system_states[i+3] -= 2*M_PI;
-
-        else if (system_states[i+3] < -M_PI)
-            system_states[i+3] += 2*M_PI;
-    }
     return system_states;
-}
-
-inline Eigen::VectorXd RK4_SIM::calcK1 ( const base::Vector6d &velocity,
-        const base::Vector6d &controlInput)
-{
-    return calcAcceleration( velocity, controlInput);
-}
-
-inline Eigen::VectorXd RK4_SIM::calcK2 (const Eigen::VectorXd &k1,
-        base::Vector6d velocity,
-        const base::Vector6d &controlInput)
-{
-    velocity += gIntegStep/2 * k1.tail(6);
-    return calcAcceleration( velocity, controlInput);
-}
-
-inline Eigen::VectorXd RK4_SIM::calcK3 ( const Eigen::VectorXd &k2,
-        base::Vector6d velocity,
-        const base::Vector6d &controlInput)
-{
-    velocity += gIntegStep/2 * k2.tail(6);
-    return calcAcceleration( velocity, controlInput);
-}
-
-inline Eigen::VectorXd RK4_SIM::calcK4 ( const Eigen::VectorXd &k3,
-        base::Vector6d velocity,
-        const base::Vector6d &controlInput)
-{
-    velocity += gIntegStep * k3.tail(6);
-    return calcAcceleration( velocity, controlInput);
-}
-
-void RK4_SIM::updateCoefficient(Eigen::VectorXd &k)
-{
-    for (int i=0; i < gSystemOrder; i++)
-        k[i] = gIntegStep * k[i];
 }
 
 void RK4_SIM::setIntegrationStep(const double integrationStep)
@@ -129,20 +75,21 @@ void RK4_SIM::setIntegrationStep(const double integrationStep)
     gIntegStep = integrationStep;
 }
 
-void RK4_SIM::checkConstruction(double &integrationStep)
+void RK4_SIM::checkConstruction(double integrationStep, int systemOrder)
 {
     if (integrationStep <= 0)
         throw std::runtime_error("Library: RK4Integrator.cpp: integrationStep is smaller than zero.");
+    if (systemOrder <= 0)
+        throw std::runtime_error("Library: RK4Integrator.cpp: systemOrder is smaller than zero.");
 }
 
-void RK4_SIM::checkInputs(const Eigen::VectorXd &systemStates, double &currentTime,
-        const base::Vector6d &controlInput)
+void RK4_SIM::checkInputs(const Eigen::VectorXd &systemStates, const base::Vector6d &controlInput)
 {
-    if( systemStates.size() != 12)
-        throw std::runtime_error( "Library: RK4Integrator.cpp: The systemStates should have a size equal to 12.");
+    if( systemStates.size() != gSystemOrder)
+        throw std::runtime_error( "Library: RK4Integrator.cpp: The systemStates should have a size equal to of the system state.");
 
-    if( currentTime <= 0)
-        throw std::runtime_error( "Library: RK4Integrator.cpp: The currentTime should be positive.");
+    if( systemStates.hasNaN())
+        throw std::runtime_error( "Library: RK4Integrator.cpp: The systemStates has a nan");
 
     if(controlInput.hasNaN())
         throw std::runtime_error( "Library: RK4Integrator.cpp: controlInput is nan.");

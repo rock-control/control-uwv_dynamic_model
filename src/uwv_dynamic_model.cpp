@@ -25,7 +25,7 @@ namespace underwaterVehicle
 {
 DynamicModel::DynamicModel(double samplingTime,
         int simPerCycle,  double initialTime)
-: RK4_SIM((samplingTime/(double)simPerCycle))
+: RK4_SIM((samplingTime/(double)simPerCycle), gSystemOrder)
 {
     checkConstruction(samplingTime, simPerCycle, initialTime);
     gSamplingTime = samplingTime;
@@ -37,8 +37,7 @@ DynamicModel::DynamicModel(double samplingTime,
     setUWVParameters(uwvParameters);
 
     // States variables
-    Eigen::VectorXd statesInit = Eigen::VectorXd::Zero(gSystemOrder);
-    updateStates(statesInit);
+    resetStates();
 
     gLinearAcceleration = Eigen::VectorXd::Zero(3);
     gAngularAcceleration = Eigen::VectorXd::Zero(3);
@@ -50,7 +49,7 @@ DynamicModel::~DynamicModel()
 {
 }
 
-void DynamicModel::sendEffortCommands(const base::LinearAngular6DCommand &controlInput)
+base::samples::RigidBodyState DynamicModel::sendEffortCommands(const base::LinearAngular6DCommand &controlInput)
 {
     // Checks if the control input is valid
     checkControlInput(controlInput);
@@ -60,60 +59,75 @@ void DynamicModel::sendEffortCommands(const base::LinearAngular6DCommand &contro
     gEfforts.tail(3) = controlInput.angular;
 
     // Gets a vector with the current system states (pose and velocities)
-    Eigen::VectorXd systemStates = Eigen::VectorXd::Zero(gSystemOrder);
-    systemStates = getStates();
+    Eigen::VectorXd systemStates = getStates();
 
     // Performs iterations to calculate the new system's states
     for (int ii=0; ii < gSimPerCycle; ii++)
-        systemStates = calcStates(systemStates, gCurrentTime, gEfforts);
+    {
+        systemStates = calcStates(systemStates, gEfforts);
+        //Brute force normalization of quaternions
+        systemStates.segment(3,4) /= systemStates.segment(3,4).norm();
+    }
 
     // Updates the new system's states
     updateStates(systemStates);
-
+    return getRigidBodyState();
 }
 
-Eigen::VectorXd DynamicModel::calcAcceleration( const base::Vector6d &velocity,
+Eigen::VectorXd DynamicModel::DERIV( const Eigen::VectorXd &current_states,
         const base::Vector6d &controlInput)
 {
     /**
      * velocityAndAcceleration:
      *
-     * [0] = u		[6]  = u_dot	(SURGE)
-     * [1] = v		[7]  = v_dot	(SWAY)
-     * [2] = w		[8]  = w_dot	(HEAVE)
-     * [3] = p		[9]  = p_dot	(ROLL)
-     * [4] = q		[10] = q_dot	(PITCH)
-     * [5] = r		[11] = r_dot	(YAW)
+     * [0] = x          [7]  = u    (SURGE)
+     * [1] = y          [8]  = v    (SWAY)
+     * [2] = z          [9]  = w    (HEAVE)
+     * [3] = e1         [10]  = p   (ROLL)
+     * [4] = e2         [11] = q    (PITCH)
+     * [5] = e3         [12] = r    (YAW)
+     * [6] = n
      *
      */
-    Eigen::VectorXd velocityAndAcceleration = Eigen::VectorXd::Zero(gSystemOrder);
 
+    checkStates(current_states);
+
+    //states
+    Eigen::VectorXd velocityAndAcceleration = Eigen::VectorXd::Zero(gSystemOrder);
+    base::Vector6d velocity = current_states.tail(6);
+    base::Vector4d quat = current_states.segment(3,4);
+    base::Orientation orientation(quat[3],quat[0],quat[1],quat[2]);
+
+    // Updating the RK4 vector with the velocity and acceleration values
+    // Pose derivatives
+    velocityAndAcceleration.head<3>() = orientation.matrix()*velocity.head<3>();
+    // Quaternion derivatives
+    velocityAndAcceleration.segment<4>(3) = calQuatDeriv(velocity.tail<3>(), orientation);
+    // Calculating the acceleration based on all the hydrodynamics effects
+    velocityAndAcceleration.tail<6>() = calcAcceleration(controlInput, velocity, orientation);
+    // Updating global acceleration variables
+    gLinearAcceleration  = velocityAndAcceleration.segment<3>(7);
+    gAngularAcceleration = velocityAndAcceleration.segment<3>(10);
+
+
+
+    return velocityAndAcceleration;
+}
+
+base::Vector6d DynamicModel::calcAcceleration(const base::Vector6d &controlInput, const base::Vector6d &velocity, const base::Orientation &orientation)
+{
     // Calculating the acceleration based on all the hydrodynamics effects
     base::Vector6d acceleration = Eigen::VectorXd::Zero(6);
     switch(gUwvParameters.modelType)
     {
     case SIMPLE:
-        acceleration  = gInvInertiaMatrix * ( gEfforts - caclDampingEffect(gUwvParameters, velocity) - calcGravityBuoyancy(gOrientation, gUwvParameters));
+        acceleration  = gInvInertiaMatrix * ( controlInput + caclDampingEffect(gUwvParameters, velocity) + calcGravityBuoyancy(orientation, gUwvParameters));
         break;
     case COMPLEX:
-        acceleration  = gInvInertiaMatrix * ( gEfforts- calcCoriolisEffect(gUwvParameters.inertiaMatrix, velocity) - caclDampingEffect(gUwvParameters, velocity) - calcGravityBuoyancy(gOrientation, gUwvParameters));
+        acceleration  = gInvInertiaMatrix * ( controlInput + calcCoriolisEffect(gUwvParameters.inertiaMatrix, velocity) + caclDampingEffect(gUwvParameters, velocity) + calcGravityBuoyancy(orientation, gUwvParameters));
         break;
     }
-
-    // Converting the body velocity to world velocity. This is necessary because
-    // when the integration takes place in order to find the position, the velocity
-    // should be expressed in the world frame, just like the position is.
-    base::Vector6d worldVelocity = convBodyToWorld(velocity, gOrientation);
-
-    // Updating the RK4 vector with the velocity and acceleration values
-    velocityAndAcceleration.head(6) = worldVelocity;
-    velocityAndAcceleration.tail(6) = acceleration;
-
-    // Updating global acceleration variables
-    gLinearAcceleration  = acceleration.head(3);
-    gAngularAcceleration = acceleration.tail(3);
-
-    return velocityAndAcceleration;
+    return acceleration;
 }
 
 void DynamicModel::setUWVParameters(const UWVParameters &uwvParameters)
@@ -127,7 +141,6 @@ void DynamicModel::setUWVParameters(const UWVParameters &uwvParameters)
 void DynamicModel::resetStates()
 {
     base::Vector3d resetVector3d = Eigen::VectorXd::Zero(3);
-
     gPosition           = resetVector3d;
     gOrientation        = base::Orientation::Identity();
     gLinearVelocity     = resetVector3d;
@@ -136,28 +149,34 @@ void DynamicModel::resetStates()
 
 void DynamicModel::setPosition(const base::Vector3d &position)
 {
-    gPosition = position;
+    if(!position.hasNaN())
+        gPosition = position;
 }
 
 void DynamicModel::setOrientation(const base::Orientation &orientation)
 {
-    gOrientation = orientation;
+    gOrientation = orientation.normalized();
 }
 
 void DynamicModel::setLinearVelocity(const base::Vector3d &linearVelocity)
 {
-    gLinearVelocity = linearVelocity;
+    if(!linearVelocity.hasNaN())
+        gLinearVelocity = linearVelocity;
 }
 
 void DynamicModel::setAngularVelocity(const base::Vector3d &angularVelocity)
 {
+    if(!angularVelocity.hasNaN())
     gAngularVelocity = angularVelocity;
 }
 
 void DynamicModel::setSamplingTime(const double samplingTime)
 {
-    gSamplingTime = samplingTime;
-    setIntegrationStep(gSamplingTime/(double)gSimPerCycle);
+    if(samplingTime > 0)
+    {
+        gSamplingTime = samplingTime;
+        setIntegrationStep(gSamplingTime/(double)gSimPerCycle);
+    }
 }
 
 UWVParameters DynamicModel::getUWVParameters(void) const
@@ -170,16 +189,7 @@ base::Position DynamicModel::getPosition(void) const
     return gPosition;
 }
 
-base::Vector3d DynamicModel::getEulerOrientation(void) const
-{
-    base::Vector3d euler_angles;
-    euler_angles[0] = base::getRoll(gOrientation);
-    euler_angles[1] = base::getPitch(gOrientation);
-    euler_angles[2] = base::getYaw(gOrientation);
-    return euler_angles;
-}
-
-base::Orientation DynamicModel::getQuatOrienration(void) const
+base::Orientation DynamicModel::getOrienration(void) const
 {
      return gOrientation;
 }
@@ -187,43 +197,13 @@ base::Orientation DynamicModel::getQuatOrienration(void) const
 base::Vector3d DynamicModel::getLinearVelocity( bool worldFrame) const
 {
     if(worldFrame)
-    {
-        // Body to world frame convertion
-        base::Vector6d bodyVelocity;
-        base::Vector6d worldVelocity;
-
-        bodyVelocity.head(3) = gLinearVelocity;
-        bodyVelocity.tail(3) = gAngularVelocity;
-
-        worldVelocity = convBodyToWorld(bodyVelocity, gOrientation);
-
-        return worldVelocity.head(3);
-    }
-    else
-    {
-        return gLinearVelocity;
-    }
+        return gOrientation.matrix()*gLinearVelocity;
+    return gLinearVelocity;
 }
 
-base::Vector3d DynamicModel::getAngularVelocity(bool worldFrame) const
+base::Vector3d DynamicModel::getAngularVelocity(void) const
 {
-    if(worldFrame)
-    {
-        // Body to world frame convertion
-        base::Vector6d bodyVelocity;
-        base::Vector6d worldVelocity;
-
-        bodyVelocity.head(3) = gLinearVelocity;
-        bodyVelocity.tail(3) = gAngularVelocity;
-
-        worldVelocity = convBodyToWorld( bodyVelocity, gOrientation);
-
-        return worldVelocity.tail(3);
-    }
-    else
-    {
-        return gAngularVelocity;
-    }
+    return gAngularVelocity;
 }
 
 base::Vector3d DynamicModel::getLinearAcceleration(void) const
@@ -240,9 +220,9 @@ Eigen::VectorXd DynamicModel::getStates(void) const
 {
     Eigen::VectorXd systemStates = Eigen::VectorXd::Zero(gSystemOrder);
     systemStates.segment(0,3) = gPosition;
-    systemStates.segment(3,3) = getEulerOrientation();
-    systemStates.segment(6,3) = gLinearVelocity;
-    systemStates.segment(9,3) = gAngularVelocity;
+    systemStates.segment(3,4) = gOrientation.coeffs();
+    systemStates.segment(7,3) = gLinearVelocity;
+    systemStates.segment(10,3) = gAngularVelocity;
     return systemStates;
 }
 
@@ -266,69 +246,40 @@ int DynamicModel::getSimPerCycle(void) const
     return gSimPerCycle;
 }
 
-base::Quaterniond DynamicModel::eulerToQuaternion( base::Vector3d eulerAngles)
+base::Vector4d DynamicModel::calQuatDeriv(const base::Vector3d &ang_vel, const base::Orientation &orientation)
 {
-    base::Quaterniond quaternion;
-    quaternion.w() = ( cos(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) +
-            ( sin(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
-    quaternion.x() = ( sin(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) -
-            ( cos(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
-    quaternion.y() = ( cos(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*cos(eulerAngles(2)/2) ) +
-            ( sin(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*sin(eulerAngles(2)/2) );
-    quaternion.z() = ( cos(eulerAngles(0)/2)*cos(eulerAngles(1)/2)*sin(eulerAngles(2)/2) ) -
-            ( sin(eulerAngles(0)/2)*sin(eulerAngles(1)/2)*cos(eulerAngles(2)/2) );
-    return quaternion;
+    /** Based on Fossen[2011], Andrle[2013] & Wertz[1978]
+     *
+     *  qdot = 1/2*T(q)*w = 1/2*Omega(w)*q
+     *  Omega(w) = [-J(w), w;
+     *              -w^t , 0]
+     *   J(w): skew-symmetric matrix
+     *
+     *   Quaternion representation:
+     *   q = (q_r, q_i); q_r: real part, q_i: imaginary part
+     *   Quaternion multiplication:
+     *   q = q1*q2 = M(q2)*q1
+     *   M(q) = [q_r,   q_i3, -q_i2, q_i1;
+     *          -q_i3,  q_r,   q_i1, q_i2;
+     *           q_i2, -q_i1,  q_r,  q_i3;
+     *          -q_i1, -q_i2, -q_i3, q_r ]
+     *   M((0,q_i)) = Omega(q_i)
+     *
+     *   => qdot = 1/2*orientation*w_as_quaternion
+     *
+     * Fossen, Thor I. Handbook of marine craft hydrodynamics and motion control. John Wiley & Sons, 2011.
+     * Andrle, Michael S., and John L. Crassidis. "Geometric integration of quaternions." Journal of Guidance, Control, and Dynamics 36.6 (2013): 1762-1767.
+     * (Astrophysics and Space Science Library 73) James R. Wertz (auth.), James R. Wertz (eds.)-Spacecraft Attitude Determination and Control-Springer Netherlands (1978)
+     */
+    base::Orientation quat_ang_vel(0, ang_vel[0], ang_vel[1], ang_vel[2]);
+    return (orientation*quat_ang_vel).coeffs()/2;
 }
-
-base::Vector6d DynamicModel::convBodyToWorld( const base::Vector6d &bodyCoordinates,
-        const base::Orientation &orientation)
- {
-    base::Matrix6d transfMatrix = Eigen::MatrixXd::Zero(6,6);
-
-    transfMatrix = calcTransfMatrix(orientation);
-
-    return transfMatrix * bodyCoordinates;
- }
-
-base::Vector6d DynamicModel::convWorldToBody( const base::Vector6d &worldCoordinates,
-        const base::Orientation &orientation)
- {
-    base::Matrix6d invTransfMatrix = Eigen::MatrixXd::Zero(6,6);
-
-    invTransfMatrix = calcTransfMatrix(orientation).inverse();
-
-    return invTransfMatrix * worldCoordinates;
-}
-
-base::Matrix6d DynamicModel::calcTransfMatrix( const base::Orientation &orientation)
-{
-    base::Matrix6d transfMatrix = Eigen::MatrixXd::Zero(6,6);;
-
-    // TODO Need an elegant solution, using rotation matrix
-    double phi   = base::getRoll(orientation);
-    double theta = base::getPitch(orientation);
-    double psi   = base::getYaw(orientation);
-    base::Matrix3d J1;
-    base::Matrix3d J2;
-
-    J1 << cos(psi)*cos(theta),   -sin(psi)*cos(phi) + cos(psi)*sin(theta)*sin(phi),   sin(psi)*sin(phi) + cos(psi)*cos(phi)*sin(theta),
-            sin(psi)*cos(theta),    cos(psi)*cos(phi) + sin(phi)*sin(theta)*sin(psi),  -cos(psi)*sin(phi) + sin(theta)*sin(psi)*cos(phi),
-            -sin(theta),                        cos(theta)*sin(phi),               cos(theta)*cos(phi)                 ;
-
-
-    J2 <<  1,       sin(phi)*tan(theta),       cos(phi)*tan(theta),
-            0,            cos(phi)      ,              -sin(phi)     ,
-            0,       sin(phi)/cos(theta),       cos(phi)/cos(theta);
-
-    transfMatrix.block<3,3>(0,0) = J1;
-    transfMatrix.block<3,3>(3,3) = J2;
-    return transfMatrix;
- }
 
 base::Matrix6d DynamicModel::calcInvInertiaMatrix(const base::Matrix6d &inertiaMatrix) const
 {
     /**
      * M * M^(-1) = I
+     * A*x = b
      */
     Eigen::JacobiSVD<base::Matrix6d> svd(inertiaMatrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
     return svd.solve(base::Matrix6d::Identity());
@@ -360,10 +311,11 @@ base::Vector6d DynamicModel::calcCoriolisEffect(const base::Matrix6d &inertiaMat
 
 base::Vector6d DynamicModel::caclDampingEffect( const UWVParameters &uwv_parameters, const base::Vector6d &velocity) const
 {
+    // Damping term as a dissipative term. Considering the damping term as positive semidefinite, returns a negative term.
     if(uwv_parameters.modelType == SIMPLE)
-        return caclSimpleDamping(uwv_parameters.dampMatrices, velocity);
+        return -caclSimpleDamping(uwv_parameters.dampMatrices, velocity);
     else if(uwv_parameters.modelType == COMPLEX)
-        return caclGeneralQuadDamping(uwv_parameters.dampMatrices, velocity);
+        return -caclGeneralQuadDamping(uwv_parameters.dampMatrices, velocity);
     else
         throw std::runtime_error("unknown modelType.");
 }
@@ -406,12 +358,12 @@ base::Vector6d DynamicModel::calcQuadDamping( const base::Matrix6d &quadDampMatr
     return quadDampMatrix * velocity.cwiseAbs().asDiagonal() * velocity;
 }
 
-base::Vector6d DynamicModel::calcGravityBuoyancy(const Eigen::Quaterniond& orientation, const UWVParameters &uwv_parameters) const
+base::Vector6d DynamicModel::calcGravityBuoyancy(const base::Orientation& orientation, const UWVParameters &uwv_parameters) const
 {
     return calcGravityBuoyancy(orientation, uwv_parameters.weight, uwv_parameters.buoyancy, uwv_parameters.distance_body2centerofgravity, uwv_parameters.distance_body2centerofbuoyancy);
 }
 
-base::Vector6d DynamicModel::calcGravityBuoyancy( const Eigen::Quaterniond& orientation,
+base::Vector6d DynamicModel::calcGravityBuoyancy( const base::Orientation& orientation,
         const double& weight, const double& bouyancy,
         const base::Vector3d& cg, const base::Vector3d& cb) const
 {
@@ -420,22 +372,25 @@ base::Vector6d DynamicModel::calcGravityBuoyancy( const Eigen::Quaterniond& orie
      *                    (cg*W - cb*B) X R^T * e3]
      *  R: Rotation matrix from body-frame to world-frame
      *  e3 = [0; 0; 1]
+     *
+     *  In Rock framework, positive z is pointing up, in marine/undewater literature positive z is pointing down.
      */
     base::Vector6d gravityEffect;
     gravityEffect << orientation.inverse() * Eigen::Vector3d(0, 0, (weight-bouyancy)),
             (cg*weight - cb*bouyancy).cross(orientation.inverse() * Eigen::Vector3d(0, 0, 1));
-    return gravityEffect;
+    return -gravityEffect;
 }
 
 
-void DynamicModel::updateStates(Eigen::VectorXd &newSystemStates)
+void DynamicModel::updateStates(const Eigen::VectorXd &newSystemStates)
 {
-    if(newSystemStates.size() != gSystemOrder)
-        throw std::runtime_error("uwv_dynamic_model updateStates: newSystemState doesn't have size 12");
+    checkStates(newSystemStates);
     gPosition           = newSystemStates.segment(0,3);
-    gOrientation        = eulerToQuaternion(newSystemStates.segment(3,3));
-    gLinearVelocity     = newSystemStates.segment(6,3);
-    gAngularVelocity    = newSystemStates.segment(9,3);
+    base::Vector4d quat = newSystemStates.segment(3,4);
+    base::Orientation ori(quat[3],quat[0],quat[1],quat[2]);
+    gOrientation = ori;
+    gLinearVelocity     = newSystemStates.segment(7,3);
+    gAngularVelocity    = newSystemStates.segment(10,3);
 }
 
 
@@ -456,9 +411,9 @@ base::samples::RigidBodyState DynamicModel::getRigidBodyState(void) const
     base::samples::RigidBodyState state;
 
     state.position = getPosition();
-    state.orientation = getQuatOrienration();
-    state.velocity = getLinearVelocity(false);
-    state.angular_velocity = getAngularVelocity(false);
+    state.orientation = getOrienration();
+    state.velocity = getLinearVelocity(true);
+    state.angular_velocity = getAngularVelocity();
     return state;
 }
 
@@ -494,4 +449,21 @@ void DynamicModel::checkControlInput(const base::LinearAngular6DCommand &control
         throw std::runtime_error("control input is unset");
 }
 
+void DynamicModel::checkStates(const base::VectorXd &states) const
+{
+    /**
+    *
+    * [0] = x          [7]  = u    (SURGE)
+    * [1] = y          [8]  = v    (SWAY)
+    * [2] = z          [9]  = w    (HEAVE)
+    * [3] = e1         [10]  = p   (ROLL)
+    * [4] = e2         [11] = q    (PITCH)
+    * [5] = e3         [12] = r    (YAW)
+    * [6] = n
+    */
+    if(states.size() != gSystemOrder)
+        throw std::runtime_error("uwv_dynamic_model checkStates: SystemState doesn't have size 13");
+    if(states.hasNaN())
+        throw std::runtime_error("uwv_dynamic_model checkStates: SystemState has a NaN");
+}
 };

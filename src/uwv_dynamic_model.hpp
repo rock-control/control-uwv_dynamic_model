@@ -44,7 +44,16 @@ public:
      * Function for sending Effort commands to the model.
      * @param controlInput - Effort commands that should be applied to the model
      */
-    void sendEffortCommands(const base::LinearAngular6DCommand &controlInput);
+    base::samples::RigidBodyState sendEffortCommands(const base::LinearAngular6DCommand &controlInput);
+
+    /** Compute Acceleration
+     *
+     *  @param vector of forces and torques
+     *  @param vector of actual velocity
+     *  @param actual orientation
+     *  @return vector of linear angular acceleration
+     */
+    base::Vector6d calcAcceleration(const base::Vector6d &controlInput, const base::Vector6d &velocity, const base::Orientation &orientation);
 
     /**
      * Sets the general UWV parameters
@@ -100,16 +109,10 @@ public:
     base::Position getPosition(void) const;
 
     /**
-     * Gets the euler orientation
-     * @return eulerOrientation - Euler orientation vector
-     */
-    base::Vector3d getEulerOrientation(void) const;
-
-    /**
      * Gets the quaternion orientation
      * @return quatOrientation - Quaternion orientation
      */
-    base::Orientation getQuatOrienration(void) const;
+    base::Orientation getOrienration(void) const;
 
     /**
      * Gets the linear velocity
@@ -121,7 +124,7 @@ public:
      * Gets the angular velocity
      * @return angularVelocity - Angular velocity vector
      */
-    base::Vector3d getAngularVelocity(bool worldFrame = true) const;
+    base::Vector3d getAngularVelocity(void) const;
 
     /**
      * Gets the linear acceleration
@@ -178,38 +181,12 @@ public:
     int getSimPerCycle(void) const;
 
     /**
-     * Converts from euler angles to quaternions.
-     * @param eulerAngles - Euler angles vector
-     * @return quaternion - Quaternion variable
+     * Calculates the quaternion derivatives
+     * @param angular velocity
+     * @param orientation
+     * @return quaternion derivatives d[x, y, z, w]/dt
      */
-    static base::Orientation eulerToQuaternion( base::Vector3d eulerAngles);
-
-    /**
-     * Converts the Body-Frame coordinates into World-Frame coordinates.
-     * @param bodyCoordinates - Vector that contains the body coordinates
-     * @param orientation - Current quaternion necessary to do the frame transformation
-     * @return worldCoordinates - Vector with the world coordinates
-     */
-    static base::Vector6d convBodyToWorld( const base::Vector6d &bodyCoordinates,
-            const base::Orientation &orientation);
-
-    /**
-     * Converts the World-Frame coordinates into Body-Frame coordinates.
-     * @param worldCoordinates - Vector that contains the world coordinates
-     * @param orientation - Current quaternion necessary to do the frame transformation
-     * @return bodyCoordinates - Vector that will receive the body coordinates
-     */
-    static base::Vector6d convWorldToBody( const base::Vector6d &worldCoordinates,
-            const base::Orientation &orientation);
-
-    /**
-     * Calculates the transformation matrix that is used to transform
-     * coordinates from Body-Frame to World-Frame.
-     * ( worldFrame = transMatrix * bodyFrame )
-     * @param orientation - Get current euler angles
-     * @return transfMatrix - Transformation matrix
-     */
-    static base::Matrix6d calcTransfMatrix( const base::Orientation &orientation);
+    static base::Vector4d calQuatDeriv(const base::Vector3d &ang_vel, const base::Orientation &orientation);
 
 protected:
 
@@ -221,7 +198,7 @@ protected:
      * @param velocity - Current velocities
      * @param controlInput - Current control input
      */
-    Eigen::VectorXd calcAcceleration( const base::Vector6d &velocity,
+    Eigen::VectorXd DERIV( const Eigen::VectorXd &current_states,
                           const base::Vector6d &controlInput);
 
 private:
@@ -293,7 +270,7 @@ private:
      * @param uwv_parametes
      * @return vecto ofr forces and torques
      */
-    base::Vector6d calcGravityBuoyancy(const Eigen::Quaterniond& orientation, const UWVParameters &uwv_parameters) const;
+    base::Vector6d calcGravityBuoyancy(const base::Orientation& orientation, const UWVParameters &uwv_parameters) const;
 
     /** Compute gravity and buoyancy terms
      *
@@ -304,7 +281,7 @@ private:
      * @param vector center of buoyancy
      * @return forces and torques vector
      */
-    base::Vector6d calcGravityBuoyancy( const Eigen::Quaterniond& orientation,
+    base::Vector6d calcGravityBuoyancy( const base::Orientation& orientation,
             const double& weight, const double& bouyancy,
             const base::Vector3d& cg, const base::Vector3d& cb) const;
 
@@ -312,7 +289,7 @@ private:
      * Updates the current states (pose and velocity)
      * @param newSystemStates as vector of states
      */
-    void updateStates(Eigen::VectorXd &newSystemStates);
+    void updateStates(const Eigen::VectorXd &newSystemStates);
 
     /**
      * FUNCTIONS FOR CHECKING FOR USER'S MISUSE
@@ -332,6 +309,11 @@ private:
      * Check control input.
      */
     void checkControlInput(const base::LinearAngular6DCommand &controlInput) const;
+
+    /**
+     * Check states.
+     */
+    void checkStates(const base::VectorXd &states) const;
 
 
     /**
@@ -373,7 +355,7 @@ private:
     /**
      * Number of system states
      */
-    static const int gSystemOrder = 12;
+    static const int gSystemOrder = 13;
 
     /**
      * SIMULATION PARAMETERS

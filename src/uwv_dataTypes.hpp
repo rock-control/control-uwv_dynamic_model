@@ -92,7 +92,7 @@ struct UWVParameters
         buoyancy(1)
     {
         dampMatrices.resize(2);
-        for(int i = 0; i < dampMatrices.size(); i++)
+        for(size_t i = 0; i < dampMatrices.size(); i++)
             dampMatrices[i] = Eigen::MatrixXd::Zero(6,6);
     };
 };

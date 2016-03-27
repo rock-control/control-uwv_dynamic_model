@@ -22,24 +22,27 @@ public:
     /*
      * Constructor
      */
-    RK4_SIM( double integrationStep);
+    RK4_SIM( double integrationStep, int systemOrder);
 
-    ~RK4_SIM();
+    virtual ~RK4_SIM()=0;
 
-    /**
-     *	Performs one step simulation
+    /** Performs one step simulation
+     *
+     *	@param actual state
+     *	@param controlInput
+     *	@return next state
      */
-    Eigen::VectorXd calcStates(const Eigen::VectorXd &systemStates,
-            double &currentTime,
-            const base::Vector6d &controlInput);
+    Eigen::VectorXd calcStates(const Eigen::VectorXd &systemStates, const base::Vector6d &controlInput);
 
-    /*
-     * Uses the system's dynamic equations in order to calculate the
-     * acceleration according to the current system states and control
-     * input.
+    /* Compute derivatives of states
+     *
+     * @param actual state
+     * @param controlInput
+     * @return state derivatives
+     *
      * This function is overloaded in the derived class.
      */
-    virtual Eigen::VectorXd calcAcceleration( const base::Vector6d &velocity,
+    virtual Eigen::VectorXd DERIV( const Eigen::VectorXd &current_states,
             const base::Vector6d &controlInput) = 0;
 
     void setIntegrationStep(const double integrationStep);
@@ -57,42 +60,8 @@ private:
     double gIntegStep;
 
 
-    /**
-     * Calculates the k1 coefficient of the Runge-Kutta Integration method
-     */
-    inline Eigen::VectorXd calcK1 ( const base::Vector6d &velocity,
-            const base::Vector6d &controlInput);
-
-    /**
-     * Calculates the k2 coefficient of the Runge-Kutta Integration method
-     */
-    inline Eigen::VectorXd calcK2 ( const Eigen::VectorXd &k1,
-            base::Vector6d velocity,
-            const base::Vector6d &controlInput);
-
-    /**
-     * Calculates the k3 coefficient of the Runge-Kutta Integration method
-     */
-    inline Eigen::VectorXd calcK3 ( const Eigen::VectorXd &k2,
-            base::Vector6d velocity,
-            const base::Vector6d &controlInput);
-
-    /**
-     * Calculates the k4 coefficient of the Runge-Kutta Integration method
-     */
-    inline Eigen::VectorXd calcK4 ( const Eigen::VectorXd &k3,
-            base::Vector6d velocity,
-            const base::Vector6d &controlInput);
-
-    /**
-     * Update the given k coefficient according to the integration step value
-     */
-    inline void updateCoefficient(Eigen::VectorXd &k);
-
-    void checkConstruction(double &integrationStep);
-    void checkInputs(const Eigen::VectorXd &systemStates,
-            double &currentTime,
-            const base::Vector6d &controlInput);
+    void checkConstruction(double integrationStep, int systemOrder);
+    void checkInputs(const Eigen::VectorXd &systemStates, const base::Vector6d &controlInput);
 };
 };
 

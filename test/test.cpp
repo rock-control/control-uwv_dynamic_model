@@ -22,44 +22,8 @@ BOOST_AUTO_TEST_SUITE (CONSTRUCTOR)
 
 BOOST_AUTO_TEST_CASE( null_control_order )
 {
-	double samplingTime = 0.2;
-	uint simPerCycle = 8;
-	double initialTime = 1;
-	BOOST_REQUIRE_NO_THROW( underwaterVehicle::DynamicModel vehicle(samplingTime, simPerCycle, initialTime));
+	BOOST_REQUIRE_NO_THROW( underwaterVehicle::DynamicModel vehicle);
 }
-
-BOOST_AUTO_TEST_CASE( negative_sampling_time )
-{
-	double samplingTime = -0.2;
-	uint simPerCycle = 8;
-	double initialTime = 1;
-	BOOST_REQUIRE_THROW (underwaterVehicle::DynamicModel vehicle(samplingTime, simPerCycle, initialTime), std::runtime_error);
-}
-
-BOOST_AUTO_TEST_CASE( null_sampling_time )
-{
-	double samplingTime = 0;
-	uint simPerCycle = 8;
-	double initialTime = 1;
-	BOOST_REQUIRE_THROW (underwaterVehicle::DynamicModel vehicle(samplingTime, simPerCycle, initialTime), std::runtime_error);
-}
-
-BOOST_AUTO_TEST_CASE( null_sim_per_cycle )
-{
-	double samplingTime = 0.2;
-	uint simPerCycle = 0;
-	double initialTime = 1;
-	BOOST_REQUIRE_THROW (underwaterVehicle::DynamicModel vehicle(samplingTime, simPerCycle, initialTime), std::runtime_error);
-}
-
-BOOST_AUTO_TEST_CASE( negative_initial_time )
-{
-	double samplingTime = 0.2;
-	uint simPerCycle = 8;
-	double initialTime = -1;
-	BOOST_REQUIRE_THROW (underwaterVehicle::DynamicModel vehicle(samplingTime, simPerCycle, initialTime), std::runtime_error);
-}
-
 BOOST_AUTO_TEST_SUITE_END()
 
 
@@ -68,13 +32,13 @@ BOOST_AUTO_TEST_SUITE (INITPARAMETERS)
 
 BOOST_AUTO_TEST_CASE( normal )
 {
-    underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+    underwaterVehicle::DynamicModel vehicle;
     BOOST_REQUIRE_NO_THROW( vehicle.setUWVParameters(loadParameters()));
 }
 
 BOOST_AUTO_TEST_CASE( unset_inertia_matrix)
 {
-	underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+	underwaterVehicle::DynamicModel vehicle;
 	underwaterVehicle::UWVParameters parameters = loadParameters();
 
 
@@ -89,7 +53,7 @@ BOOST_AUTO_TEST_CASE( unset_inertia_matrix)
 
 BOOST_AUTO_TEST_CASE( wrong_set_damp_matrix_1 )
 {
-	underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+	underwaterVehicle::DynamicModel vehicle;
 	underwaterVehicle::UWVParameters parameters = loadParameters();
 
 	// Test
@@ -99,7 +63,7 @@ BOOST_AUTO_TEST_CASE( wrong_set_damp_matrix_1 )
 
 BOOST_AUTO_TEST_CASE( wrong_set_damp_matrix_2 )
 {
-    underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+    underwaterVehicle::DynamicModel vehicle;
     underwaterVehicle::UWVParameters parameters = loadParameters();
 
     // Test
@@ -109,7 +73,7 @@ BOOST_AUTO_TEST_CASE( wrong_set_damp_matrix_2 )
 
 BOOST_AUTO_TEST_CASE( damp_matrix_and_Model_Type_inconsistent_1 )
 {
-    underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+    underwaterVehicle::DynamicModel vehicle;
     underwaterVehicle::UWVParameters parameters = loadParameters();
 
     // Test
@@ -119,7 +83,7 @@ BOOST_AUTO_TEST_CASE( damp_matrix_and_Model_Type_inconsistent_1 )
 
 BOOST_AUTO_TEST_CASE( damp_matrix_and_Model_Type_inconsistent_2 )
 {
-    underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+    underwaterVehicle::DynamicModel vehicle;
     underwaterVehicle::UWVParameters parameters = loadParameters();
 
     // Test
@@ -129,18 +93,20 @@ BOOST_AUTO_TEST_CASE( damp_matrix_and_Model_Type_inconsistent_2 )
 
 BOOST_AUTO_TEST_CASE( unset_command )
 {
-    underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+    underwaterVehicle::DynamicModel vehicle;
 
     // Test
     base::LinearAngular6DCommand controlInput;
+    base::Vector6d velocity(base::Vector6d::Zero());
+    base::Orientation orientation(base::Orientation::Identity());
     BOOST_REQUIRE_NO_THROW(vehicle.setUWVParameters(loadParameters()));
-    BOOST_REQUIRE_THROW(vehicle.sendEffortCommands(controlInput), std::runtime_error);
+    BOOST_REQUIRE_THROW(vehicle.calcAcceleration(controlInput, velocity, orientation), std::runtime_error);
 }
 
 BOOST_AUTO_TEST_CASE( uwv_weight )
 {
 
-    underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+    underwaterVehicle::DynamicModel vehicle;
     underwaterVehicle::UWVParameters parameters = loadParameters();
 
     // Test
@@ -150,7 +116,7 @@ BOOST_AUTO_TEST_CASE( uwv_weight )
 
 BOOST_AUTO_TEST_CASE( uwv_buoyancy )
 {
-    underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+    underwaterVehicle::DynamicModel vehicle;
     underwaterVehicle::UWVParameters parameters = loadParameters();
 
     // Test
@@ -170,23 +136,26 @@ BOOST_AUTO_TEST_SUITE (SEND_COMMANDS)
 
 BOOST_AUTO_TEST_CASE( normal )
 {
-    underwaterVehicle::DynamicModel vehicle(0.2, 8, 1);
+    underwaterVehicle::DynamicModel vehicle;
     underwaterVehicle::UWVParameters parameters = loadParameters();
 
     BOOST_REQUIRE_NO_THROW(vehicle.setUWVParameters(parameters));
 
     base::LinearAngular6DCommand controlInput;
-
     controlInput.linear = base::Vector3d(2,0,0);
     controlInput.angular = base::Vector3d(0,0,0);
 
-    BOOST_REQUIRE_NO_THROW(vehicle.sendEffortCommands(controlInput));
+    base::Vector6d velocity(base::Vector6d::Zero());
+    base::Orientation orientation(base::Orientation::Identity());
+
+
+    BOOST_REQUIRE_NO_THROW(vehicle.calcAcceleration(controlInput, velocity, orientation));
 
 }
 
 BOOST_AUTO_TEST_CASE( unset_command )
 {
-    underwaterVehicle::DynamicModel vehicle(0.1, 8, 1);
+    underwaterVehicle::DynamicModel vehicle;
     underwaterVehicle::UWVParameters parameters = loadParameters();
 
     BOOST_REQUIRE_NO_THROW(vehicle.setUWVParameters(parameters));
@@ -195,7 +164,10 @@ BOOST_AUTO_TEST_CASE( unset_command )
 
     controlInput.linear = base::Vector3d(2,0,0);
 
-    BOOST_REQUIRE_THROW(vehicle.sendEffortCommands(controlInput), std::runtime_error);
+    base::Vector6d velocity(base::Vector6d::Zero());
+    base::Orientation orientation(base::Orientation::Identity());
+
+    BOOST_REQUIRE_THROW(vehicle.calcAcceleration(controlInput, velocity, orientation), std::runtime_error);
 
 }
 

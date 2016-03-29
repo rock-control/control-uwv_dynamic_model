@@ -31,29 +31,22 @@
 
 namespace underwaterVehicle
 {
-class DynamicModel : public RK4_SIM
+class DynamicModel
 {
 
 public:
-    DynamicModel(double samplingTime = 0.01,
-            int simPerCycle = 10, double initialTime = 0.0);
+    DynamicModel();
 
     ~DynamicModel();
 
-    /**
-     * Function for sending Effort commands to the model.
-     * @param controlInput - Effort commands that should be applied to the model
-     */
-    base::samples::RigidBodyState sendEffortCommands(const base::LinearAngular6DCommand &controlInput);
-
     /** Compute Acceleration
      *
-     *  @param vector of forces and torques
-     *  @param vector of actual velocity
+     *  @param control input (forces and torques)
+     *  @param actual linear/angular velocity in body frame.
      *  @param actual orientation
-     *  @return vector of linear angular acceleration
+     *  @return linear/angular acceleration in body frame
      */
-    base::Vector6d calcAcceleration(const base::Vector6d &controlInput, const base::Vector6d &velocity, const base::Orientation &orientation);
+    base::Vector6d calcAcceleration(const base::LinearAngular6DCommand &controlInput, const base::Vector6d &velocity, const base::Orientation &orientation);
 
     /**
      * Sets the general UWV parameters
@@ -62,144 +55,10 @@ public:
     void setUWVParameters(const UWVParameters &uwvParameters);
 
     /**
-     * Resets position, orientation and velocities of the model
-     */
-    void resetStates(void);
-
-    /**
-     * Sets the current position of the vehicle
-     * * @param position - New position value
-     */
-    void setPosition(const base::Vector3d &position);
-
-    /**
-     * Sets the current orientation of the vehicle
-     * * @param quatOrientation - New orientation value
-     */
-    void setOrientation(const base::Orientation &orientation);
-
-    /**
-     * Sets the current linear velocity of the vehicle
-     * * @param linearVelocity - New linear velocity value
-     */
-    void setLinearVelocity(const base::Vector3d &linearVelocity);
-
-    /**
-     * Sets the current angular velocity of the vehicle
-     * * @param angularVelocity - New angular velocity value
-     */
-    void setAngularVelocity(const base::Vector3d &angularVelocity);
-
-    /**
-     * Sets the samling time
-     * * @param samplingTime - New sampling time value
-     */
-    void setSamplingTime(const double samplingTime);
-
-    /**
      * Gets the underwater vehicle parameters
      * @return - Underwater vehicle parameters
      */
     UWVParameters getUWVParameters(void) const;
-
-    /**
-     * Gets the position
-     * @return Position vector
-     */
-    base::Position getPosition(void) const;
-
-    /**
-     * Gets the quaternion orientation
-     * @return quatOrientation - Quaternion orientation
-     */
-    base::Orientation getOrienration(void) const;
-
-    /**
-     * Gets the linear velocity
-     * @return linearVelocity - Linear velocity vector
-     */
-    base::Vector3d getLinearVelocity(bool worldFrame = true) const;
-
-    /**
-     * Gets the angular velocity
-     * @return angularVelocity - Angular velocity vector
-     */
-    base::Vector3d getAngularVelocity(void) const;
-
-    /**
-     * Gets the linear acceleration
-     * @return linearAcceleration - Linear acceleration vector
-     */
-    base::Vector3d getLinearAcceleration(void) const;
-
-    /**
-     * Gets the angular acceleration
-     * @return angularAcceleration - Angular acceleration vector
-     */
-    base::Vector3d getAngularAcceleration(void) const;
-
-    /**
-     * Set system state (pose and velocity)
-     * @param RigidBodyState state
-     */
-    void setRigidBodyState(base::samples::RigidBodyState const &state);
-
-    /**
-     * Gets the system state (pose and velocity)
-     * @return systemState as RigidBodyState
-     */
-    base::samples::RigidBodyState getRigidBodyState(void) const;
-
-    /**
-     * Gets the the system states (pose and velocity)
-     * @return systemStates - System states vector (size = 12)
-     */
-    Eigen::VectorXd getStates(void) const;
-
-    /**
-     * Gets the current efforts' vector
-     * @return efforts - Vector containing the current effort (forces and moments)
-     */
-    base::Vector6d getEfforts(void) const;
-
-    /**
-     * Gets the simulation time in seconds
-     * @return simulationTime - Simulation time in seconds
-     */
-    double getSimulationTime(void) const;
-
-    /**
-     * Gets the sampling time
-     * @return samplingTime - Sampling time variable
-     */
-    double getSamplingTime(void) const;
-
-    /**
-     * Gets the number of simulations (iterations) per cycle
-     * @return simPerCycle - Number of simulations per cycle
-     */
-    int getSimPerCycle(void) const;
-
-    /**
-     * Calculates the quaternion derivatives
-     * @param angular velocity
-     * @param orientation
-     * @return quaternion derivatives d[x, y, z, w]/dt
-     */
-    static base::Vector4d calQuatDeriv(const base::Vector3d &ang_vel, const base::Orientation &orientation);
-
-protected:
-
-    /**
-     * Calculates the vehicle acceleration based on the current velocity,
-     * on the control input (efforts) and on the mathematical model.
-     * NOTE: This function should be used only by the RK4 Integrator.
-     * @return velocityAndAcceleration, linear and angular
-     * @param velocity - Current velocities
-     * @param controlInput - Current control input
-     */
-    Eigen::VectorXd DERIV( const Eigen::VectorXd &current_states,
-                          const base::Vector6d &controlInput);
 
 private:
 
@@ -286,19 +145,8 @@ private:
             const base::Vector3d& cg, const base::Vector3d& cb) const;
 
     /**
-     * Updates the current states (pose and velocity)
-     * @param newSystemStates as vector of states
-     */
-    void updateStates(const Eigen::VectorXd &newSystemStates);
-
-    /**
      * FUNCTIONS FOR CHECKING FOR USER'S MISUSE
      */
-
-    /**
-     * Checks if the variables provided in the class construction are valid
-     */
-    void checkConstruction(double &samplingTime, int &simPerCycle, double &initialTime);
 
     /**
      * Determinant of inertiaMatrix must be different from zero
@@ -311,58 +159,9 @@ private:
     void checkControlInput(const base::LinearAngular6DCommand &controlInput) const;
 
     /**
-     * Check states.
+     * Check velocity
      */
-    void checkStates(const base::VectorXd &states) const;
-
-
-    /**
-     * SYSTEM STATES
-     */
-
-    /**
-     * Pose variables
-     */
-    base::Vector3d gPosition;
-    base::Orientation gOrientation;
-
-    /**
-     * Velocity variables
-     */
-    base::Vector3d gLinearVelocity;
-    base::Vector3d gAngularVelocity;
-
-    /**
-     * Acceleration variables
-     */
-    base::Vector3d gLinearAcceleration;
-    base::Vector3d gAngularAcceleration;
-
-    /**
-     * Vector with forces and moments applied to the vehicle
-     */
-    base::Vector6d gEfforts;
-
-    /**
-     * Current time
-     */
-    double gCurrentTime;
-
-    /**
-     * SYSTEM'S DIMENSION
-     */
-
-    /**
-     * Number of system states
-     */
-    static const int gSystemOrder = 13;
-
-    /**
-     * SIMULATION PARAMETERS
-     */
-
-    double gSamplingTime;
-    int gSimPerCycle;
+    void checkVelocity(const base::Vector6d &velocity);
 
     /**
      * MODEL PARAMETERS

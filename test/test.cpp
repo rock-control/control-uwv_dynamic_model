@@ -1,7 +1,6 @@
 #define BOOST_TEST_MODULE UWV_DYNAMIC_MODEL
 #include <boost/test/included/unit_test.hpp>
-#include <uwv_dynamic_model/uwv_dynamic_model.hpp>
-#include <uwv_dynamic_model/uwv_dataTypes.hpp>
+#include <uwv_dynamic_model/uwv_model_simulation.hpp>
 #include <iostream>
 
 /**
@@ -91,16 +90,16 @@ BOOST_AUTO_TEST_CASE( damp_matrix_and_Model_Type_inconsistent_2 )
     BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::runtime_error);
 }
 
-BOOST_AUTO_TEST_CASE( unset_command )
+BOOST_AUTO_TEST_CASE( send_command )
 {
     underwaterVehicle::DynamicModel vehicle;
 
     // Test
-    base::LinearAngular6DCommand controlInput;
+    base::Vector6d controlInput;
     base::Vector6d velocity(base::Vector6d::Zero());
     base::Orientation orientation(base::Orientation::Identity());
     BOOST_REQUIRE_NO_THROW(vehicle.setUWVParameters(loadParameters()));
-    BOOST_REQUIRE_THROW(vehicle.calcAcceleration(controlInput, velocity, orientation), std::runtime_error);
+    BOOST_REQUIRE_NO_THROW(vehicle.calcAcceleration(controlInput, velocity, orientation));
 }
 
 BOOST_AUTO_TEST_CASE( uwv_weight )
@@ -141,9 +140,8 @@ BOOST_AUTO_TEST_CASE( normal )
 
     BOOST_REQUIRE_NO_THROW(vehicle.setUWVParameters(parameters));
 
-    base::LinearAngular6DCommand controlInput;
-    controlInput.linear = base::Vector3d(2,0,0);
-    controlInput.angular = base::Vector3d(0,0,0);
+    base::Vector6d controlInput(base::Vector6d::Zero());
+    controlInput[0] = 2;
 
     base::Vector6d velocity(base::Vector6d::Zero());
     base::Orientation orientation(base::Orientation::Identity());
@@ -155,7 +153,7 @@ BOOST_AUTO_TEST_CASE( normal )
 
 BOOST_AUTO_TEST_CASE( unset_command )
 {
-    underwaterVehicle::DynamicModel vehicle;
+    underwaterVehicle::ModelSimulation vehicle;
     underwaterVehicle::UWVParameters parameters = loadParameters();
 
     BOOST_REQUIRE_NO_THROW(vehicle.setUWVParameters(parameters));
@@ -164,10 +162,7 @@ BOOST_AUTO_TEST_CASE( unset_command )
 
     controlInput.linear = base::Vector3d(2,0,0);
 
-    base::Vector6d velocity(base::Vector6d::Zero());
-    base::Orientation orientation(base::Orientation::Identity());
-
-    BOOST_REQUIRE_THROW(vehicle.calcAcceleration(controlInput, velocity, orientation), std::runtime_error);
+    BOOST_REQUIRE_THROW(vehicle.sendEffort(controlInput), std::runtime_error);
 
 }
 

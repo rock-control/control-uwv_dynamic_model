@@ -21,19 +21,15 @@
 #define _UWV_DYNAMIC_MODEL_H_
 
 #include "uwv_dataTypes.hpp"
-#include "base/samples/Joints.hpp"
-#include "base/samples/RigidBodyState.hpp"
-#include "orocos/auv_control/6dControl.hpp"
-
 
 namespace underwaterVehicle
 {
-class DynamicModel
+class KinematicModel
 {
 public:
-    DynamicModel();
+    KinematicModel();
 
-    ~DynamicModel();
+    ~KinematicModel();
 
     /** Compute Acceleration
      *
@@ -84,19 +80,19 @@ private:
      */
     base::Vector6d caclDampingEffect( const UWVParameters &uwv_parameters, const base::Vector6d &velocity) const;
 
-    /** Compute quadratic damping for the SIMPLE mode
+    /** Compute quadratic damping for the COMPLEX mode
      *
-     *  Based on the usual linear + quadratic damping proposed by Fossen[1994].
-     * @param vector of damping matrices
+     *  Based on the general 6DOF coupled quadratic drag matrix proposed by McFarland[2013]
+     * @param vector of 6 quadDamping matrices
      * @param velocity vector
      * @return dampingEffect
      */
     base::Vector6d caclSimpleDamping( const std::vector<base::Matrix6d> &damp_matrices, const base::Vector6d &velocity) const;
 
-    /** Compute damping for the COMPLEX mode
+    /** Compute damping for the SIMPLE mode
      *
-     *  Based on the general 6DOF coupled quadratic drag matrix proposed by McFarland[2013]
-     * @param vector of 6 quadDamping matrices
+     *  Based on the usual linear + quadratic damping proposed by Fossen[1994].
+     * @param vector of damping matrices
      * @param velocity vector
      * @return dampingEffect
      */

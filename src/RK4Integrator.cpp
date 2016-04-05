@@ -28,70 +28,49 @@
 
 namespace underwaterVehicle
 {
-RK4_SIM::RK4_SIM(double integrationStep, int systemOrder)
-:   gSystemOrder(systemOrder),
-    gIntegStep(integrationStep)
+RK4_SIM::RK4_SIM(double integrationStep)
+:    gIntegStep(integrationStep)
 {
-    checkConstruction(integrationStep, systemOrder);
+    checkStep(integrationStep);
 }
 
 RK4_SIM::~RK4_SIM()
 {
 }
 
-Eigen::VectorXd RK4_SIM::calcStates(const Eigen::VectorXd &systemStates, const base::Vector6d &controlInput)
+PoseVelocityState RK4_SIM::calcStates(const PoseVelocityState &states, const base::Vector6d &control_input)
 {
-    /**
-     * systemStates:
-     *
-     * [0] = x			[7]  = u	(SURGE)
-     * [1] = y			[8]  = v	(SWAY)
-     * [2] = z			[9]  = w	(HEAVE)
-     * [3] = e1  	    [10]  = p	(ROLL)
-     * [4] = e2		    [11] = q	(PITCH)
-     * [5] = e3         [12] = r    (YAW)
-     * [6] = n
-     *
-     */
-    checkInputs(systemStates, controlInput);
-    Eigen::VectorXd system_states = systemStates;
+    checkInputs(states, control_input);
+    PoseVelocityState system_states = states;
 
     // Runge-Kuta coefficients
-    Eigen::VectorXd k1 = DERIV(system_states,controlInput);
-    Eigen::VectorXd k2 = DERIV(system_states + gIntegStep/2*k1, controlInput);
-    Eigen::VectorXd k3 = DERIV(system_states + gIntegStep/2*k2, controlInput);
-    Eigen::VectorXd k4 = DERIV(system_states + gIntegStep*k3, controlInput);
+    PoseVelocityState k1 = DERIV(system_states, control_input);
+    PoseVelocityState k2 = DERIV(system_states + k1*(gIntegStep/2), control_input);
+    PoseVelocityState k3 = DERIV(system_states + k2*(gIntegStep/2), control_input);
+    PoseVelocityState k4 = DERIV(system_states + k3*gIntegStep, control_input);
 
     // Calculating the system states
-    system_states += (gIntegStep/6) * (k1 + 2*k2 + 2*k3 + k4);
-
+    system_states += (k1 + k2*2 + k3*2 + k4)*(gIntegStep/6);
     return system_states;
 }
 
-void RK4_SIM::setIntegrationStep(const double integrationStep)
+void RK4_SIM::setIntegrationStep(const double integration_step)
 {
-    if (integrationStep <= 0)
-        throw std::runtime_error("Library: RK4Integrator.cpp: integrationStep is smaller than zero.");
-    gIntegStep = integrationStep;
+    checkStep(integration_step);
+    gIntegStep = integration_step;
 }
 
-void RK4_SIM::checkConstruction(double integrationStep, int systemOrder)
+void RK4_SIM::checkStep(double integration_step)
 {
-    if (integrationStep <= 0)
-        throw std::runtime_error("Library: RK4Integrator.cpp: integrationStep is smaller than zero.");
-    if (systemOrder <= 0)
-        throw std::runtime_error("Library: RK4Integrator.cpp: systemOrder is smaller than zero.");
+    if (integration_step <= 0)
+        throw std::runtime_error("uwv_dynamic_model: RK4Integrator.cpp: Integration step is equal or smaller than zero.");
 }
 
-void RK4_SIM::checkInputs(const Eigen::VectorXd &systemStates, const base::Vector6d &controlInput)
+void RK4_SIM::checkInputs(const PoseVelocityState &states, const base::Vector6d &control_input)
 {
-    if( systemStates.size() != gSystemOrder)
-        throw std::runtime_error( "Library: RK4Integrator.cpp: The systemStates should have a size equal to of the system state.");
-
-    if( systemStates.hasNaN())
-        throw std::runtime_error( "Library: RK4Integrator.cpp: The systemStates has a nan");
-
-    if(controlInput.hasNaN())
-        throw std::runtime_error( "Library: RK4Integrator.cpp: controlInput is nan.");
+    if( states.hasNaN())
+        throw std::runtime_error( "uwv_dynamic_model: RK4Integrator.cpp: The system states has a nan");
+    if(control_input.hasNaN())
+        throw std::runtime_error( "uwv_dynamic_model: RK4Integrator.cpp: Control input has a nan.");
 }
 };

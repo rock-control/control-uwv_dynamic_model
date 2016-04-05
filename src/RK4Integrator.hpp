@@ -11,6 +11,7 @@
 #define RK4_INTEGRATOR_HPP
 
 #include <base/Eigen.hpp>
+#include "uwv_dataTypes.hpp"
 #include <stdexcept>
 
 namespace underwaterVehicle
@@ -19,40 +20,38 @@ class RK4_SIM
 {
 public:
 
-    /*
-     * Constructor
+    /* Constructor
+     *
+     * Constructor for Generic state space representation
+     * @param step
      */
-    RK4_SIM( double integrationStep, int systemOrder);
+    RK4_SIM( double integration_step);
 
     virtual ~RK4_SIM()=0;
 
-    /** Performs one step simulation
+    /** Performs one step simulation.
      *
+     *  Particular case of state space representation. PoseVelocityState structure instead of vector of states.
      *	@param actual state
-     *	@param controlInput
+     *	@param control_input
      *	@return next state
      */
-    Eigen::VectorXd calcStates(const Eigen::VectorXd &systemStates, const base::Vector6d &controlInput);
+    PoseVelocityState calcStates(const PoseVelocityState &states, const base::Vector6d &control_input);
 
     /* Compute derivatives of states
      *
-     * @param actual state
-     * @param controlInput
+     * Particular case of state space representation. PoseVelocityState structure instead of vector of states.
+     * @param current state
+     * @param control input
      * @return state derivatives
      *
      * This function is overloaded in the derived class.
      */
-    virtual Eigen::VectorXd DERIV( const Eigen::VectorXd &current_states,
-            const base::Vector6d &controlInput) = 0;
+    virtual PoseVelocityState DERIV(const PoseVelocityState &current_states, const base::Vector6d &control_input) = 0;
 
-    void setIntegrationStep(const double integrationStep);
+    void setIntegrationStep(double integration_step);
 
 private:
-
-    /**
-     * Number of system states
-     */
-    const int gSystemOrder;
 
     /**
      * Integration step size
@@ -60,8 +59,8 @@ private:
     double gIntegStep;
 
 
-    void checkConstruction(double integrationStep, int systemOrder);
-    void checkInputs(const Eigen::VectorXd &systemStates, const base::Vector6d &controlInput);
+    void checkStep(double integration_step);
+    void checkInputs(const PoseVelocityState &states, const base::Vector6d &control_input);
 };
 };
 

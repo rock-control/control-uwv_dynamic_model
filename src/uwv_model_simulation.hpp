@@ -5,16 +5,17 @@
 #include "uwv_dataTypes.hpp"
 #include "uwv_dynamic_model.hpp"
 #include "uwv_kinematic_model.hpp"
+#include "orocos/auv_control/6dControl.hpp"
 
 
 namespace underwaterVehicle
 {
-class ModelSimulation : public RK4_SIM, public DynamicModel
+class ModelSimulation : public RK4_SIM
 {
 
 public:
     ModelSimulation(double sampling_time = 0.01, int sim_per_cycle = 10,
-                    double initial_time = 0.0, bool pose_orientaion_integration = false);
+                    double initial_time = 0.0, const UWVParameters &uwv_parameters = UWVParameters());
 
     ~ModelSimulation();
 
@@ -49,19 +50,6 @@ public:
      * @return Efforts
      */
     base::LinearAngular6DCommand getEfforts(void);
-
-    /** Convert a RigidBodyState into a PoseVelocityState
-     *
-     *  @param state in RigidBodyState
-     *  @return PoseVelocityState
-     */
-    PoseVelocityState fromRBS(const base::samples::RigidBodyState &state);
-
-    /** Convert a PoseVelocityState into a RigidBodyState
-     *
-     *  @param state in PoseVelocityState into a RigidBodyState
-     */
-    base::samples::RigidBodyState toRBS(const PoseVelocityState &state);
 
     const AccelerationState& getAcceleration() const {
         return gAcceleration;
@@ -110,7 +98,7 @@ protected:
      * @param control input
      * @return state derivatives
      */
-    PoseVelocityState DERIV(const PoseVelocityState &current_states, const base::Vector6d &control_input);
+    PoseVelocityState velocityDeriv(const PoseVelocityState &current_states, const base::Vector6d &control_input);
 
 private:
 
@@ -168,9 +156,9 @@ private:
     base::Vector6d gEfforts;
 
     /**
-     * Integrate pose and orientation
+     * Motion Model
      */
-    bool gPoseOrientationIntegration;
+    DynamicModel gDynamicModel;
 
     /**
      * SIMULATION PARAMETERS

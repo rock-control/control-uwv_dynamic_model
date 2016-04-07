@@ -47,7 +47,28 @@ public:
      *
      * This function is overloaded in the derived class.
      */
-    virtual PoseVelocityState DERIV(const PoseVelocityState &current_states, const base::Vector6d &control_input) = 0;
+    PoseVelocityState deriv(const PoseVelocityState &current_states, const base::Vector6d &control_input);
+
+    /** Compute derivative of velocity states
+     *
+     *  @param current state
+     *  @param control input
+     *  @return velocity derivatives
+     *
+     * This function is overloaded in the derived class.
+     */
+    virtual PoseVelocityState velocityDeriv(PoseVelocityState current_states, const base::Vector6d &control_input);
+
+    /** Compute derivative of pose states
+     *
+     *  @param current state
+     *  @return pose derivatives
+     *
+     * This function is overloaded in the derived class.
+     */
+    virtual PoseVelocityState poseDeriv(PoseVelocityState current_states);
+
+
 
     void setIntegrationStep(double integration_step);
 

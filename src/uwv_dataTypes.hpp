@@ -158,21 +158,21 @@ struct PoseVelocityState
         this->angular_velocity -= state.angular_velocity;
         return *this;
     }
-    inline PoseVelocityState operator* (const double &number)
+    inline PoseVelocityState operator* (double scalar)
     {
         PoseVelocityState new_state;
-        new_state.position = number*this->position;
-        new_state.orientation.coeffs() = number*this->orientation.coeffs();
-        new_state.linear_velocity = number*this->linear_velocity;
-        new_state.angular_velocity = number*this->angular_velocity;
+        new_state.position = scalar*this->position;
+        new_state.orientation.coeffs() = scalar*this->orientation.coeffs();
+        new_state.linear_velocity = scalar*this->linear_velocity;
+        new_state.angular_velocity = scalar*this->angular_velocity;
         return new_state;
     }
-    inline PoseVelocityState& operator*= (const double &number)
+    inline PoseVelocityState& operator*= (double scalar)
     {
-        this->position *= number;
-        this->orientation.coeffs() *= number;
-        this->linear_velocity *= number;
-        this->angular_velocity *= number;
+        this->position *= scalar;
+        this->orientation.coeffs() *= scalar;
+        this->linear_velocity *= scalar;
+        this->angular_velocity *= scalar;
         return *this;
     }
 };

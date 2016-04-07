@@ -11,10 +11,10 @@
 #define RK4_INTEGRATOR_HPP
 
 #include <base/Eigen.hpp>
-#include "uwv_dataTypes.hpp"
+#include "DataTypes.hpp"
 #include <stdexcept>
 
-namespace underwaterVehicle
+namespace uwv_dynamic_model
 {
 class RK4_SIM
 {

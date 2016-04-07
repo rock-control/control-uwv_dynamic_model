@@ -26,7 +26,7 @@
 #include <base/Logging.hpp>
 #include <iostream>
 
-namespace underwaterVehicle
+namespace uwv_dynamic_model
 {
 RK4_SIM::RK4_SIM(double integrationStep)
 :    gIntegStep(integrationStep)

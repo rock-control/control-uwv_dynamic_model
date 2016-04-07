@@ -1,6 +1,6 @@
-#include "uwv_kinematic_model.hpp"
+#include "UwvKinematicModel.hpp"
 
-namespace underwaterVehicle
+namespace uwv_dynamic_model
 {
 KinematicModel::KinematicModel()
 {

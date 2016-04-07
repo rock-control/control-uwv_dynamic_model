@@ -20,13 +20,13 @@
 #ifndef _UWV_DYNAMIC_MODEL_H_
 #define _UWV_DYNAMIC_MODEL_H_
 
-#include "uwv_dataTypes.hpp"
+#include "DataTypes.hpp"
 #include "base/samples/Joints.hpp"
 #include "base/samples/RigidBodyState.hpp"
 #include "orocos/auv_control/6dControl.hpp"
 
 
-namespace underwaterVehicle
+namespace uwv_dynamic_model
 {
 class DynamicModel
 {

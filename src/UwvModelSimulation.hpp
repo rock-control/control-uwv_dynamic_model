@@ -2,13 +2,13 @@
 #define _UWV_MODEL_SIMULATION_H_
 
 #include "RK4Integrator.hpp"
-#include "uwv_dataTypes.hpp"
-#include "uwv_dynamic_model.hpp"
-#include "uwv_kinematic_model.hpp"
+#include "DataTypes.hpp"
+#include "UwvDynamicModel.hpp"
+#include "UwvKinematicModel.hpp"
 #include "orocos/auv_control/6dControl.hpp"
 
 
-namespace underwaterVehicle
+namespace uwv_dynamic_model
 {
 class ModelSimulation : public RK4_SIM
 {

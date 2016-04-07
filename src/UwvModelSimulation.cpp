@@ -1,7 +1,7 @@
-#include "uwv_model_simulation.hpp"
+#include "UwvModelSimulation.hpp"
 
 
-namespace underwaterVehicle
+namespace uwv_dynamic_model
 {
 ModelSimulation::ModelSimulation(double sampling_time, int sim_per_cycle,
                                  double initial_time, const UWVParameters &uwv_parameters)

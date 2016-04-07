@@ -1,9 +1,9 @@
 #ifndef _UWV_KINEMATIC_MODEL_H_
 #define _UWV_KINEMATIC_MODEL_H_
 
-#include "uwv_dataTypes.hpp"
+#include "DataTypes.hpp"
 
-namespace underwaterVehicle
+namespace uwv_dynamic_model
 {
 class KinematicModel
 {

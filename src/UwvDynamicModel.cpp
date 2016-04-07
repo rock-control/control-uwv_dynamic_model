@@ -18,10 +18,10 @@
 /***************************************************************************/
 
 
-#include "uwv_dynamic_model.hpp"
+#include "UwvDynamicModel.hpp"
 #include <base/Logging.hpp>
 
-namespace underwaterVehicle
+namespace uwv_dynamic_model
 {
 DynamicModel::DynamicModel()
 {

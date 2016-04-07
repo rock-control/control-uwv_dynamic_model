@@ -18,7 +18,7 @@
 #include <vector>
 #include <utility>      // std::swap
 
-namespace underwaterVehicle
+namespace uwv_dynamic_model
 {
 
 /**

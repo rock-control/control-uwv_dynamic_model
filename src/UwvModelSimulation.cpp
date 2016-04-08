@@ -160,7 +160,6 @@ DynamicModelSimulation::DynamicModelSimulation(double sampling_time, int sim_per
     :BaseModelSimulation(sampling_time, sim_per_cycle, initial_time)
 {
     simulator.setIntegrationStep(sampling_time/sim_per_cycle);
-//    simulator.reset(new RK4_DYN_SIM(sampling_time/sim_per_cycle));
 }
 
 DynamicModelSimulation::~DynamicModelSimulation(){}
@@ -193,8 +192,7 @@ void DynamicModelSimulation::setUWVParameters(const UWVParameters &parameters)
 ModelSimulation::ModelSimulation(double sampling_time, int sim_per_cycle, double initial_time)
     :BaseModelSimulation(sampling_time, sim_per_cycle, initial_time)
 {
-    simulator.setIntegrationStep(sampling_time/sim_per_cycle);// = new DYN_KIN_SIM(sampling_time/sim_per_cycle);
-//    simulator.reset(new RK4_KIN_SIM(sampling_time/sim_per_cycle));
+    simulator.setIntegrationStep(sampling_time/sim_per_cycle);
 }
 
 ModelSimulation::~ModelSimulation(){}
@@ -218,5 +216,4 @@ void ModelSimulation::setUWVParameters(const UWVParameters &parameters)
 {
     simulator.gDynamicModel.setUWVParameters(parameters);
 }
-
 }

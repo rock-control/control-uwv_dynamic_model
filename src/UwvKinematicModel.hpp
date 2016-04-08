@@ -18,7 +18,7 @@ public:
      *  @param actual orientation
      *  @return pose derivatives (linear velocity in world-frame)
      */
-    static base::Vector3d calcPoseDeriv(const base::Vector3d &linear_velocity, const base::Orientation &orientation);
+    base::Vector3d calcPoseDeriv(const base::Vector3d &linear_velocity, const base::Orientation &orientation);
 
     /** Compute quaternion derivatives
      *
@@ -26,14 +26,14 @@ public:
      *  @param actual orientation
      *  @return orientation derivatives (quaternion derivatives)
      */
-    static base::Orientation calcOrientationDeriv(const base::Vector3d &ang_vel, const base::Orientation &orientation);
+    base::Orientation calcOrientationDeriv(const base::Vector3d &ang_vel, const base::Orientation &orientation);
 
     /** Check velocity
      *
      *  Throw if velocity has a NaN
      *  @param velocity
      */
-    static void checkVelocity(const base::Vector3d &velocity);
+    void checkVelocity(const base::Vector3d &velocity);
 };
 };
 #endif

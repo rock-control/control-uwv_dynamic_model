@@ -21,10 +21,6 @@
 #define _UWV_DYNAMIC_MODEL_H_
 
 #include "DataTypes.hpp"
-#include "base/samples/Joints.hpp"
-#include "base/samples/RigidBodyState.hpp"
-#include "orocos/auv_control/6dControl.hpp"
-
 
 namespace uwv_dynamic_model
 {

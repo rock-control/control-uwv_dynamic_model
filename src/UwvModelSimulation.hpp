@@ -5,26 +5,23 @@
 #include "DataTypes.hpp"
 #include "UwvDynamicModel.hpp"
 #include "UwvKinematicModel.hpp"
-#include "orocos/auv_control/6dControl.hpp"
-
 
 namespace uwv_dynamic_model
 {
-class ModelSimulation : public RK4_SIM
+class BaseModelSimulation
 {
-
 public:
-    ModelSimulation(double sampling_time = 0.01, int sim_per_cycle = 10,
-                    double initial_time = 0.0, const UWVParameters &uwv_parameters = UWVParameters());
+    BaseModelSimulation(double sampling_time = 0.01, int sim_per_cycle = 10,
+                    double initial_time = 0.0);
 
-    ~ModelSimulation();
+    virtual ~BaseModelSimulation();
 
     /**
      * Function for sending Effort commands to the model.
      * @param controlInput - Effort commands applied to the model
      * @return computed pose state
      */
-    PoseVelocityState sendEffort(const base::LinearAngular6DCommand &control_input);
+    PoseVelocityState sendEffort(const base::Vector6d &control_input);
 
     /** Send Effort commands to the model given the actual states.
      *
@@ -32,7 +29,37 @@ public:
      * @param actual_pose
      * @return computed pose state
      */
-    PoseVelocityState sendEffort(const base::LinearAngular6DCommand &control_input, const PoseVelocityState actual_pose);
+    PoseVelocityState sendEffort(const base::Vector6d &control_input, const PoseVelocityState &actual_pose);
+
+    /** Do one step simulation
+     *
+     *  To be override by specific simulator
+     * @param actual_pose state
+     * @param control_input
+     * @param return computed pose state
+     */
+    virtual PoseVelocityState calcStates(const PoseVelocityState &actual_pose, const base::Vector6d &control_input);
+
+    /** Get Acceleration
+     *
+     *  To be override by specific simulator
+     *  @return Acceleration
+     */
+    virtual AccelerationState getAcceleration() const;
+
+    /** Get UWV Parameters
+     *
+     *  To be override by specific simulator
+     *  @return UWV Parameters
+     */
+    virtual UWVParameters getUWVParameters() const;
+
+    /** Get UWV Parameters
+     *
+     *  To be override by specific simulator
+     *  @param UWV Parameters
+     */
+    virtual void setUWVParameters(const UWVParameters &parameters);
 
     /** Reset pose states
      *
@@ -45,60 +72,47 @@ public:
      */
     void setOrientation(const base::Orientation &orientation);
 
-    /** Get Effort applied
+    /** Get Current Time
      *
-     * @return Efforts
+     *  @return Current Time
      */
-    base::LinearAngular6DCommand getEfforts(void);
+    double getCurrentTime() const;
 
-    const AccelerationState& getAcceleration() const {
-        return gAcceleration;
-    }
-
-    void setAcceleration(const AccelerationState& acceleration) {
-        gAcceleration = acceleration;
-    }
-
-    double getCurrentTime() const {
-        return gCurrentTime;
-    }
-
-    void setCurrentTime(double currentTime) {
-        checkSimulationTime(currentTime);
-        gCurrentTime = currentTime;
-    }
-
-    const PoseVelocityState& getPose() const {
-        return gPose;
-    }
-
-    void setPose(const PoseVelocityState& pose) {
-        checkState(pose);
-        gPose = pose;
-    }
-
-    double getSamplingTime() const {
-        return gSamplingTime;
-    }
-
-    void setSamplingTime(double samplingTime) {
-        checkSamplingTime(samplingTime);
-        gSamplingTime = samplingTime;
-    }
-
-    int getSimPerCycle() const {
-        return gSimPerCycle;
-    }
-
-protected:
-
-    /* Compute derivatives of states
+    /** Set Current Time
      *
-     * @param actual state
-     * @param control input
-     * @return state derivatives
+     *  @param Current Time
      */
-    PoseVelocityState velocityDeriv(const PoseVelocityState &current_states, const base::Vector6d &control_input);
+    void setCurrentTime(double currentTime);
+
+    /** Get Pose
+     *
+     *  @return Pose
+     */
+    PoseVelocityState getPose();
+
+    /** Set Pose
+     *
+     *  @param  Pose
+     */
+    void setPose(const PoseVelocityState& pose);
+
+    /** Get Sampling Time
+     *
+     *  @return sampling time
+     */
+    double getSamplingTime();
+
+    /** Set Sampling Time
+     *
+     *  @param sampling time
+     */
+    void setSamplingTime(double samplingTime);
+
+    /** Get Simulations per Cycle
+     *
+     *  @return simPerCycle
+     */
+    int getSimPerCycle() const;
 
 private:
 
@@ -127,7 +141,7 @@ private:
      *  Throw exception if control input has a NaN
      *  @param control_input
      */
-    void checkControlInput(const base::LinearAngular6DCommand &control_input);
+    void checkControlInput(const base::Vector6d &control_input);
 
     /** Check state
      *
@@ -146,21 +160,6 @@ private:
     PoseVelocityState gPose;
 
     /**
-     * Acceleration variables
-     */
-    AccelerationState gAcceleration;
-
-    /**
-     * Vector with forces and moments applied to the vehicle
-     */
-    base::Vector6d gEfforts;
-
-    /**
-     * Motion Model
-     */
-    DynamicModel gDynamicModel;
-
-    /**
      * SIMULATION PARAMETERS
      */
 
@@ -171,6 +170,98 @@ private:
      * Current time
      */
     double gCurrentTime;
+};
+
+/**********************************************************
+ * Simulation of velocity states
+ * Use RK4_DYN_SIM simulator
+ * Compute velocity states
+ **********************************************************/
+class DynamicModelSimulation: public BaseModelSimulation
+{
+public:
+    DynamicModelSimulation(double sampling_time = 0.01, int sim_per_cycle = 10,
+            double initial_time = 0.0);
+
+    virtual ~DynamicModelSimulation();
+
+    /** Compute one step simulation
+     *
+     * @param actual_sates
+     * @param control_input
+     * @return computed states
+     */
+    PoseVelocityState calcStates(const PoseVelocityState &actual_pose, const base::Vector6d &control_input);
+
+    /** Return acceleration
+     *  @return acceleration
+     */
+    AccelerationState getAcceleration() const;
+
+    /** Get UWV Parameters
+     *
+     *  @return UWV Parameters
+     */
+    UWVParameters getUWVParameters() const;
+
+    /** Get UWV Parameters
+     *
+     *  @param UWV Parameters
+     */
+    void setUWVParameters(const UWVParameters &parameters);
+
+private:
+    /**
+     * Dynamic Simulator
+     */
+    DYN_SIM simulator;
+};
+
+
+/**********************************************************
+ * Simulation of velocity states
+ * Use RK4_DYN_SIM simulator
+ * Compute all state (pose & velocities)
+ **********************************************************/
+class ModelSimulation: public BaseModelSimulation
+{
+public:
+    ModelSimulation(double sampling_time = 0.01, int sim_per_cycle = 10,
+            double initial_time = 0.0);
+
+    virtual ~ModelSimulation();
+
+    /** Compute one step simulation
+     *
+     * @param actual_sates
+     * @param control_input
+     * @return computed states
+     */
+    PoseVelocityState calcStates(const PoseVelocityState &actual_pose, const base::Vector6d &control_input);
+
+    /** Get acceleration
+     *  @return acceleration
+     */
+    AccelerationState getAcceleration() const;
+
+    /** Get UWV Parameters
+     *
+     *  @return UWV Parameters
+     */
+    UWVParameters getUWVParameters() const;
+
+    /** Get UWV Parameters
+     *
+     *  @param UWV Parameters
+     */
+    void setUWVParameters(const UWVParameters &parameters);
+
+private:
+    /**
+     * Dynamic & Kinematic Simulator
+     */
+    DYN_KIN_SIM simulator;
+
 };
 };
 #endif

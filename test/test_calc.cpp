@@ -1,7 +1,7 @@
 #define BOOST_TEST_MODULE UWV_DYNAMIC_MODEL
 #include <boost/test/included/unit_test.hpp>
-#include <uwv_dynamic_model/uwv_model_simulation.hpp>
-#include <base/samples/Joints.hpp>
+#include <boost/test/floating_point_comparison.hpp>
+#include <uwv_dynamic_model/UwvModelSimulation.hpp>
 #include <iostream>
 
 /**
@@ -16,8 +16,8 @@
  * # ./unit_test --log_level=test_suite
  */
 
-underwaterVehicle::UWVParameters loadParameters(void);
-underwaterVehicle::UWVParameters loadRotationalParameters(void);
+uwv_dynamic_model::UWVParameters loadParameters(void);
+uwv_dynamic_model::UWVParameters loadRotationalParameters(void);
 base::Vector3d calcOmega(base::Vector3d omega0, double t, double omegan);
 base::Orientation calcOrientation(base::Orientation init_ori, double t, double wn, double wi, base::Vector3d init_ang_mom);
 
@@ -26,13 +26,12 @@ BOOST_AUTO_TEST_SUITE (CONSTRUCTOR)
 
 BOOST_AUTO_TEST_CASE( normal )
 {
-	underwaterVehicle::ModelSimulation vehicle;
+	uwv_dynamic_model::DynamicModelSimulation vehicle;
 	vehicle.setUWVParameters(loadParameters());
 
-	base::LinearAngular6DCommand controlInput;
+	base::Vector6d controlInput(base::Vector6d::Zero());
 
-	controlInput.linear = base::Vector3d(2,0,0);
-	controlInput.angular = base::Vector3d(0,0,0);
+	controlInput[0] = 2;
 
 	base::Vector6d velocity(base::Vector6d::Zero());
 	base::Orientation orientation(base::Orientation::Identity());
@@ -47,24 +46,21 @@ BOOST_AUTO_TEST_CASE( normal )
 
 BOOST_AUTO_TEST_CASE( buoyancy )
 {
-    underwaterVehicle::ModelSimulation vehicle;
-    underwaterVehicle::UWVParameters parameters = loadParameters();
+    uwv_dynamic_model::ModelSimulation vehicle;
+    uwv_dynamic_model::UWVParameters parameters = loadParameters();
     parameters.buoyancy = 3;
     parameters.weight = 1;
 
     vehicle.setUWVParameters(parameters);
 
     // No forces being applied
-    base::LinearAngular6DCommand controlInput;
-    controlInput.linear = base::Vector3d(0,0,0);
-    controlInput.angular = base::Vector3d(0,0,0);
+    base::Vector6d controlInput(base::Vector6d::Zero());
 
-    for(int i; i<200; i++)
+    for(int i=0 ; i<200; i++)
         vehicle.sendEffort(controlInput);
 
     // For init velocity=0 and inertia term=1, quadratic and linear damping equal to 1 and gravitational force equal 2, the steady state velocity in heave dof must be 1.
     BOOST_REQUIRE_CLOSE(vehicle.getPose().linear_velocity[2], 1, 1);
-    // For init velocity=0 and inertia term=1, acceleration in the heave dof must be equal to gravity force of 2
 
 }
 
@@ -73,14 +69,14 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity )
     double deltaT = 0.1;
     // One hour simulation
     double t = 60*60*1;
-    underwaterVehicle::ModelSimulation vehicle(deltaT, 10, 0, true);
+    uwv_dynamic_model::ModelSimulation vehicle(deltaT, 10, 0);
 
-    underwaterVehicle::UWVParameters parameters = loadRotationalParameters();
+    uwv_dynamic_model::UWVParameters parameters = loadRotationalParameters();
     vehicle.setUWVParameters(parameters);
 
     // Constant velocity in yaw DOF
     base::Vector3d omega0(0, 0, 0.10);
-    underwaterVehicle::PoseVelocityState init_state;
+    uwv_dynamic_model::PoseVelocityState init_state;
     init_state.angular_velocity = omega0;
     vehicle.setPose(init_state);
 
@@ -92,24 +88,17 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity )
     BOOST_REQUIRE_EQUAL(base::getYaw(vehicle.getPose().orientation), 0);
 
     // No torque been applied
-    base::LinearAngular6DCommand controlInput;
-    controlInput.linear = base::Vector3d::Zero();
-    controlInput.angular = base::Vector3d::Zero();
+    base::Vector6d controlInput(base::Vector6d::Zero());
 
     // Model simulation
     for (int i = 0; i < t/deltaT; i++)
         vehicle.sendEffort(controlInput);
 
-    std::cout << std::endl << "Constant Yaw velocity" << std::endl;
-    std::cout << "vehicle roll: " << base::getRoll(vehicle.getPose().orientation) << ". analytical: " << base::getRoll(orientation) << std::endl;
-    std::cout << "vehicle pitch: " << base::getPitch(vehicle.getPose().orientation) << ". analytical: " << base::getPitch(orientation) << std::endl;
-    std::cout << "vehicle yaw: " << base::getYaw(vehicle.getPose().orientation) << ". analytical: " << base::getYaw(orientation) << std::endl;
-
     // Compare simulation result with analytical one.
-    BOOST_REQUIRE_EQUAL(base::getRoll(vehicle.getPose().orientation), base::getRoll(orientation));
-    BOOST_REQUIRE_EQUAL(base::getPitch(vehicle.getPose().orientation), base::getPitch(orientation));
+    BOOST_CHECK_EQUAL(base::getRoll(vehicle.getPose().orientation), base::getRoll(orientation));
+    BOOST_CHECK_EQUAL(base::getPitch(vehicle.getPose().orientation), base::getPitch(orientation));
     //Yaw angle comparison
-    BOOST_REQUIRE_CLOSE(base::getYaw(vehicle.getPose().orientation)/base::getYaw(orientation), 1, 10^-9);
+    BOOST_CHECK_CLOSE(base::getYaw(vehicle.getPose().orientation)/base::getYaw(orientation), 1, 10^-10);
 
 }
 
@@ -123,9 +112,9 @@ BOOST_AUTO_TEST_CASE( angular )
     // Inertia parameters
     double Jt = 200;
     double J3 = 100;
-    underwaterVehicle::ModelSimulation vehicle(deltaT, 10, 0, true);
+    uwv_dynamic_model::ModelSimulation vehicle(deltaT, 10, 0);
 
-    underwaterVehicle::UWVParameters parameters = loadRotationalParameters();
+    uwv_dynamic_model::UWVParameters parameters = loadRotationalParameters();
     parameters.inertiaMatrix << 0,   0,   0,   0,   0,    0,
                                 0,   0,   0,   0,   0,    0,
                                 0,   0,   0,   0,   0,    0,
@@ -136,7 +125,7 @@ BOOST_AUTO_TEST_CASE( angular )
 
     // Initial angular velocity
     base::Vector3d omega0(0.05, 0, 0.01);
-    underwaterVehicle::PoseVelocityState init_state;
+    uwv_dynamic_model::PoseVelocityState init_state;
     init_state.angular_velocity = omega0;
     vehicle.setPose(init_state);
 
@@ -154,9 +143,7 @@ BOOST_AUTO_TEST_CASE( angular )
     base::Orientation orientation = calcOrientation(base::Orientation::Identity(), t, wn, wi, init_ang_mom);
 
     // No torque been applied
-    base::LinearAngular6DCommand controlInput;
-    controlInput.linear = base::Vector3d(0,0,0);
-    controlInput.angular = base::Vector3d(0,0,0);
+    base::Vector6d controlInput(base::Vector6d::Zero());
 
     // Metrics
     // error_quaternion = qs*qa^-1; qs:=simulation; qa:=analytical solution
@@ -175,28 +162,17 @@ BOOST_AUTO_TEST_CASE( angular )
         {
             // Get maximum value for each DOF
             if(error_quaternion.coeffs()[i]*2 > error_angles[i])
-                 {
                     error_angles[i] = error_quaternion.coeffs()[i]*2;
-                 }
         }
     }
 
-    std::cout << std::endl << "Angular case" << std::endl;
     for(size_t i=0; i<3; i++)
-        std::cout << "log(max(error_angle["<< i <<"])) = " << log(error_angles[i]) << std::endl;
+            BOOST_CHECK_SMALL(error_angles[i], 0.000000000001);
 
-    std::cout << "error roll: " << base::getRoll(error_quaternion) << std::endl;
-    std::cout << "error pitch: " << base::getPitch(error_quaternion) << std::endl;
-    std::cout << "error yaw: " << base::getYaw(error_quaternion) << std::endl;
-
-    std::cout << "vehicle roll: " << base::getRoll(vehicle.getPose().orientation) << ". analytical: " << base::getRoll(orientation) << std::endl;
-    std::cout << "vehicle pitch: " << base::getPitch(vehicle.getPose().orientation) << ". analytical: " << base::getPitch(orientation) << std::endl;
-    std::cout << "vehicle yaw: " << base::getYaw(vehicle.getPose().orientation) << ". analytical: " << base::getYaw(orientation) << std::endl;
-
-    BOOST_REQUIRE_CLOSE(base::getRoll(vehicle.getPose().orientation)/base::getRoll(orientation), 1, 10^-5);
-    BOOST_REQUIRE_CLOSE(base::getPitch(vehicle.getPose().orientation)/base::getPitch(orientation), 1, 10^-5);
-    BOOST_REQUIRE_CLOSE(base::getYaw(vehicle.getPose().orientation)/base::getYaw(orientation), 1, 10^-5);
-    BOOST_REQUIRE_CLOSE(vehicle.getPose().angular_velocity[0]/omega[0], 1, 10^-5 );
+    BOOST_CHECK_CLOSE(base::getRoll(vehicle.getPose().orientation)/base::getRoll(orientation), 1, 10^-10);
+    BOOST_CHECK_CLOSE(base::getPitch(vehicle.getPose().orientation)/base::getPitch(orientation), 1, 10^-10);
+    BOOST_CHECK_CLOSE(base::getYaw(vehicle.getPose().orientation)/base::getYaw(orientation), 1, 10^-10);
+    BOOST_CHECK_CLOSE(vehicle.getPose().angular_velocity[0]/omega[0], 1, 10^-10 );
 
 }
 
@@ -205,9 +181,9 @@ BOOST_AUTO_TEST_SUITE_END()
 
 
 
-underwaterVehicle::UWVParameters loadParameters(void)
+uwv_dynamic_model::UWVParameters loadParameters(void)
 {
-    underwaterVehicle::UWVParameters parameters;
+    uwv_dynamic_model::UWVParameters parameters;
 	parameters.inertiaMatrix << 1,   0,   0,   0,   0,    0,
 			   	   	   	   	   	   0, 	1,   0,   0,   0,    0,
 								   0,   0, 	 1,   0,   0,    0,
@@ -231,10 +207,10 @@ underwaterVehicle::UWVParameters loadParameters(void)
 }
 
 
-underwaterVehicle::UWVParameters loadRotationalParameters(void)
+uwv_dynamic_model::UWVParameters loadRotationalParameters(void)
 {
-    underwaterVehicle::UWVParameters parameters;
-    parameters.modelType = underwaterVehicle::COMPLEX;
+    uwv_dynamic_model::UWVParameters parameters;
+    parameters.modelType = uwv_dynamic_model::COMPLEX;
     parameters.inertiaMatrix << 0,   0,   0,   0,   0,    0,
                                    0,   0,   0,   0,   0,    0,
                                    0,   0,   0,   0,   0,    0,

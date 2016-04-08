@@ -44,12 +44,12 @@ PoseVelocityState RK4_SIM::calcStates(const PoseVelocityState &states, const bas
 
     // Runge-Kuta coefficients
     PoseVelocityState k1 = deriv(system_states, control_input);
-    PoseVelocityState k2 = deriv(system_states + k1*(gIntegStep/2), control_input);
-    PoseVelocityState k3 = deriv(system_states + k2*(gIntegStep/2), control_input);
-    PoseVelocityState k4 = deriv(system_states + k3*gIntegStep, control_input);
+    PoseVelocityState k2 = deriv(system_states + ((gIntegStep/2)*k1), control_input);
+    PoseVelocityState k3 = deriv(system_states + ((gIntegStep/2)*k2), control_input);
+    PoseVelocityState k4 = deriv(system_states + (gIntegStep*k3), control_input);
 
     // Calculating the system states
-    system_states += (k1 + k2*2 + k3*2 + k4)*(gIntegStep/6);
+    system_states += (gIntegStep/6)*(k1 + 2*k2 + 2*k3 + k4);
     return system_states;
 }
 
@@ -65,13 +65,13 @@ PoseVelocityState RK4_SIM::deriv(const PoseVelocityState &current_states, const 
 PoseVelocityState RK4_SIM::velocityDeriv(const PoseVelocityState &current_states, const base::Vector6d &control_input)
 {
     PoseVelocityState ret;
-    return ret*0;
+    return 0*ret;
 }
 
 PoseVelocityState RK4_SIM::poseDeriv(const PoseVelocityState &current_states)
 {
     PoseVelocityState ret;
-    return ret*0;
+    return 0*ret;
 }
 
 void RK4_SIM::setIntegrationStep(const double integration_step)
@@ -126,7 +126,7 @@ PoseVelocityState DYN_SIM::velocityDeriv(const PoseVelocityState &current_states
 PoseVelocityState DYN_SIM::poseDeriv(const PoseVelocityState &current_states)
 {
     PoseVelocityState ret;
-    return ret*0;
+    return 0*ret;
 }
 
 AccelerationState DYN_SIM::getAcceleration() const

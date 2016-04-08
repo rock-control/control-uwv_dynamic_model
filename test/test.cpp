@@ -26,6 +26,33 @@ BOOST_AUTO_TEST_CASE( null_control_order )
 BOOST_AUTO_TEST_SUITE_END()
 
 
+BOOST_AUTO_TEST_SUITE (OPERATORS)
+
+BOOST_AUTO_TEST_CASE(operators )
+{
+    uwv_dynamic_model::PoseVelocityState pose;
+    pose.position = base::Vector3d::Ones();
+    pose.linear_velocity = base::Vector3d::Ones();
+    pose.angular_velocity = base::Vector3d::Ones();
+
+    pose = 2*pose;
+    pose = pose*2;
+    pose *= 2;
+    pose += pose;
+
+    for(size_t i=0; i<3; i++)
+    {
+        BOOST_REQUIRE_EQUAL(pose.position[i], 16);
+        BOOST_REQUIRE_EQUAL(pose.linear_velocity[i], 16);
+        BOOST_REQUIRE_EQUAL(pose.angular_velocity[i],16);
+        BOOST_REQUIRE_EQUAL(pose.orientation.coeffs()[i], (16*base::Orientation::Identity().coeffs())[i]);
+    }
+    BOOST_REQUIRE_EQUAL(pose.orientation.coeffs()[3], (16*base::Orientation::Identity().coeffs())[3]);
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+
+
 
 BOOST_AUTO_TEST_SUITE (INITPARAMETERS)
 

@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE( wrong_set_damp_matrix_1 )
 
 	// Test
 	parameters.dampMatrices.resize(1);
-	BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::runtime_error);
+	BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_CASE( wrong_set_damp_matrix_2 )
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE( wrong_set_damp_matrix_2 )
 
     // Test
     parameters.dampMatrices.resize(4);
-    BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::runtime_error);
+    BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_CASE( damp_matrix_and_Model_Type_inconsistent_1 )
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE( damp_matrix_and_Model_Type_inconsistent_1 )
 
     // Test
     parameters.modelType = uwv_dynamic_model::COMPLEX;
-    BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::runtime_error);
+    BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_CASE( damp_matrix_and_Model_Type_inconsistent_2 )
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE( damp_matrix_and_Model_Type_inconsistent_2 )
 
     // Test
     parameters.dampMatrices.resize(6);
-    BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::runtime_error);
+    BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_CASE( send_command )
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE( uwv_weight )
 
     // Test
     parameters.weight = -1;
-    BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::runtime_error);
+    BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_CASE( uwv_buoyancy )
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE( uwv_buoyancy )
 
     // Test
     parameters.buoyancy = -1;
-    BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::runtime_error);
+    BOOST_REQUIRE_THROW(vehicle.setUWVParameters(parameters), std::invalid_argument);
 
 }
 

@@ -1,22 +1,3 @@
-/***************************************************************************/
-/*  Dynamic model for an underwater vehicle	                               */
-/*                                                                         */
-/* FILE --- uwv_dynamic_model.hpp	                                       */
-/*                                                                         */
-/* PURPOSE --- Header file for a Dynamic model of an 	                   */
-/*             underwater vehicle. Based on T.I.Fossen & Giovanni Indiveri */
-/*                                                                         */
-/*  Sankaranarayanan Natarajan                                             */
-/*  sankar.natarajan@dfki.de                                               */
-/*  DFKI - BREMEN 2011                                                     */
-/*                                                                         */
-/*  This file was edited to include the full Fossen Model                  */
-/*                                                                         */
-/*  Bilal Wehbe                                                            */
-/*  bilal.wehbe@dfki.de                                                    */
-/*  DFKI - BREMEN 2015                                                     */
-/***************************************************************************/
-
 #ifndef _UWV_DYNAMIC_MODEL_H_
 #define _UWV_DYNAMIC_MODEL_H_
 

@@ -1,23 +1,3 @@
-/***************************************************************************/
-/*  Dynamic model for an underwater vehicle	                           */
-/*                                                                         */
-/* FILE --- uwv_dynamic_model.cpp	                                   */
-/*                                                                         */
-/* PURPOSE --- Source file for a Dynamic model of an 	                   */
-/*             underwater vehicle. Based on T.I.Fossen & Giovanni Indiveri */
-/*                                                                         */
-/*  Sankaranarayanan Natarajan                                             */
-/*  sankar.natarajan@dfki.de                                               */
-/*  DFKI - BREMEN 2011                                                     */
-/*                                                                         */
-/*  This file was edited to include the full Fossen Model                  */
-/*                                                                         */
-/*  Bilal Wehbe                                                            */
-/*  bilal.wehbe@dfki.de                                                    */
-/*  DFKI - BREMEN 2015                                                     */
-/***************************************************************************/
-
-
 #include "UwvDynamicModel.hpp"
 #include <base/Logging.hpp>
 
@@ -167,17 +147,16 @@ base::Vector6d DynamicModel::calcGravityBuoyancy( const base::Orientation& orien
 void DynamicModel::checkParameters(const UWVParameters &uwv_parameters)
 {
     if(uwv_parameters.modelType == SIMPLE && uwv_parameters.dampMatrices.size() != 2)
-        throw std::runtime_error("in SIMPLE model, dampMatrices should have two elements, the linDampingMatrix and quadDampingMatrix");
+        throw std::invalid_argument("in SIMPLE model, dampMatrices should have two elements, the linDampingMatrix and quadDampingMatrix");
 
     if(uwv_parameters.modelType == COMPLEX && uwv_parameters.dampMatrices.size() != 6)
-        throw std::runtime_error("in COMPLEX model, dampMatrices should have six elements, one quadDampingMatrix / DOF");
+        throw std::invalid_argument("in COMPLEX model, dampMatrices should have six elements, one quadDampingMatrix / DOF");
 
     if(uwv_parameters.weight <= 0)
-        throw std::runtime_error("weight must be a positive value");
+        throw std::invalid_argument("weight must be a positive value");
     if(uwv_parameters.buoyancy <= 0)
-        throw std::runtime_error("buoyancy must be a positive value");
+        throw std::invalid_argument("buoyancy must be a positive value");
 }
-
 
 void DynamicModel::checkControlInput(const base::Vector6d &control_input) const
 {

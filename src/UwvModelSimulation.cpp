@@ -66,6 +66,9 @@ UWVParameters BaseModelSimulation::getUWVParameters() const
 void BaseModelSimulation::setUWVParameters(const UWVParameters &parameters)
 {}
 
+void BaseModelSimulation::setSimulatorStep(double step)
+{}
+
 void BaseModelSimulation::resetStates()
 {
     gPose.position = base::Vector3d::Zero();
@@ -110,6 +113,7 @@ void BaseModelSimulation::setSamplingTime(double samplingTime)
 {
     checkSamplingTime(samplingTime);
     gSamplingTime = samplingTime;
+    setSimulatorStep(samplingTime/getSimPerCycle());
 }
 
 int BaseModelSimulation::getSimPerCycle() const
@@ -184,6 +188,11 @@ void DynamicModelSimulation::setUWVParameters(const UWVParameters &parameters)
     simulator.gDynamicModel.setUWVParameters(parameters);
 }
 
+void DynamicModelSimulation::setSimulatorStep(double step)
+{
+    simulator.setIntegrationStep(step);
+}
+
 /**********************************************************
  * Simulation of velocity states
  * Use RK4_KIN_SIM simulator
@@ -215,5 +224,10 @@ UWVParameters ModelSimulation::getUWVParameters() const
 void ModelSimulation::setUWVParameters(const UWVParameters &parameters)
 {
     simulator.gDynamicModel.setUWVParameters(parameters);
+}
+
+void ModelSimulation::setSimulatorStep(double step)
+{
+    simulator.setIntegrationStep(step);
 }
 }

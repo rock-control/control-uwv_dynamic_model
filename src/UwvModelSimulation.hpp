@@ -61,6 +61,13 @@ public:
      */
     virtual void setUWVParameters(const UWVParameters &parameters);
 
+    /** Set simulator step
+     *
+     *  To be override by specific simulator
+     *  @param simulatorStep
+     */
+    virtual void setSimulatorStep(double step);
+
     /** Reset pose states
      *
      */
@@ -174,7 +181,7 @@ private:
 
 /**********************************************************
  * Simulation of velocity states
- * Use RK4_DYN_SIM simulator
+ * Use DYN_SIM simulator
  * Compute velocity states
  **********************************************************/
 class DynamicModelSimulation: public BaseModelSimulation
@@ -210,6 +217,12 @@ public:
      */
     void setUWVParameters(const UWVParameters &parameters);
 
+    /** Set simulator step
+     *
+     *  @param simulatorStep
+     */
+    void setSimulatorStep(double step);
+
 private:
     /**
      * Dynamic Simulator
@@ -220,7 +233,7 @@ private:
 
 /**********************************************************
  * Simulation of velocity states
- * Use RK4_DYN_SIM simulator
+ * Use DYN_KIN_SIM simulator
  * Compute all state (pose & velocities)
  **********************************************************/
 class ModelSimulation: public BaseModelSimulation
@@ -255,6 +268,12 @@ public:
      *  @param UWV Parameters
      */
     void setUWVParameters(const UWVParameters &parameters);
+
+    /** Set simulator step
+     *
+     *  @param simulatorStep
+     */
+    void setSimulatorStep(double step);
 
 private:
     /**

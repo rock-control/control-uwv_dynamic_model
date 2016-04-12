@@ -16,7 +16,7 @@
 #include "base/Eigen.hpp"
 #include "base/Pose.hpp"
 #include <vector>
-#include <utility>      // std::swap
+#include <utility>
 
 namespace uwv_dynamic_model
 {

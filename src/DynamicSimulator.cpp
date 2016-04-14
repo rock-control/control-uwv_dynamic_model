@@ -41,4 +41,9 @@ AccelerationState DynamicSimulator::getAcceleration() const
 {
     return gAcceleration;
 }
+
+DynamicModel* DynamicSimulator::getDynamicModel()
+{
+    return &gDynamicModel;
+}
 };

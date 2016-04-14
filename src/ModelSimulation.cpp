@@ -3,22 +3,22 @@
 
 namespace uwv_dynamic_model
 {
-BaseModelSimulation::BaseModelSimulation(double sampling_time, int sim_per_cycle,
-                                 double initial_time)
+ModelSimulation::ModelSimulation(double sampling_time, int sim_per_cycle,
+                                 double initial_time, DynamicSimulator* sim)
 {
     checkConstruction(sampling_time, sim_per_cycle, initial_time);
     gSamplingTime = sampling_time;
     gCurrentTime = initial_time;
     gSimPerCycle = sim_per_cycle;
-
     gPose = PoseVelocityState();
+    simulator = ( sim ) ? sim: new DynamicSimulator(sampling_time / sim_per_cycle);
 }
 
-BaseModelSimulation::~BaseModelSimulation()
+ModelSimulation::~ModelSimulation()
 {
 }
 
-PoseVelocityState BaseModelSimulation::sendEffort(const base::Vector6d &control_input)
+PoseVelocityState ModelSimulation::sendEffort(const base::Vector6d &control_input)
 {
     PoseVelocityState actual_state = getPose();
     actual_state = sendEffort(control_input, actual_state);
@@ -26,7 +26,7 @@ PoseVelocityState BaseModelSimulation::sendEffort(const base::Vector6d &control_
     return actual_state;
 }
 
-PoseVelocityState BaseModelSimulation::sendEffort(const base::Vector6d &control_input, const PoseVelocityState &actual_pose)
+PoseVelocityState ModelSimulation::sendEffort(const base::Vector6d &control_input, const PoseVelocityState &actual_pose)
 {
     // Checks control input and states
     checkControlInput(control_input);
@@ -45,31 +45,27 @@ PoseVelocityState BaseModelSimulation::sendEffort(const base::Vector6d &control_
     return state;
 }
 
-PoseVelocityState BaseModelSimulation::calcStates(const PoseVelocityState &actual_pose, const base::Vector6d &control_input)
+PoseVelocityState ModelSimulation::calcStates(const PoseVelocityState &actual_pose, const base::Vector6d &control_input)
 {
-    PoseVelocityState ret;
-    return ret;
+    return simulator->calcStates(actual_pose,control_input);
 }
 
-AccelerationState BaseModelSimulation::getAcceleration() const
+AccelerationState ModelSimulation::getAcceleration() const
 {
-    AccelerationState ret;
-    return ret;
+    return simulator->getAcceleration();
 }
 
-UWVParameters BaseModelSimulation::getUWVParameters() const
+UWVParameters ModelSimulation::getUWVParameters() const
 {
-    UWVParameters ret;
-    return ret;
+    return simulator->getDynamicModel()->getUWVParameters();
 }
 
-void BaseModelSimulation::setUWVParameters(const UWVParameters &parameters)
-{}
+void ModelSimulation::setUWVParameters(const UWVParameters &parameters)
+{
+    return simulator->getDynamicModel()->setUWVParameters(parameters);
+}
 
-void BaseModelSimulation::setSimulatorStep(double step)
-{}
-
-void BaseModelSimulation::resetStates()
+void ModelSimulation::resetStates()
 {
     gPose.position = base::Vector3d::Zero();
     gPose.orientation = base::Orientation::Identity();
@@ -77,51 +73,51 @@ void BaseModelSimulation::resetStates()
     gPose.angular_velocity = base::Vector3d::Zero();
 }
 
-void BaseModelSimulation::setOrientation(const base::Orientation &orientation)
+void ModelSimulation::setOrientation(const base::Orientation &orientation)
 {
     gPose.orientation = orientation;
 }
 
-double BaseModelSimulation::getCurrentTime() const
+double ModelSimulation::getCurrentTime() const
 {
     return gCurrentTime;
 }
 
-void BaseModelSimulation::setCurrentTime(double currentTime)
+void ModelSimulation::setCurrentTime(double currentTime)
 {
     checkSimulationTime(currentTime);
     gCurrentTime = currentTime;
 }
 
-PoseVelocityState BaseModelSimulation::getPose()
+PoseVelocityState ModelSimulation::getPose()
 {
     return gPose;
 }
 
-void BaseModelSimulation::setPose(const PoseVelocityState& pose)
+void ModelSimulation::setPose(const PoseVelocityState& pose)
 {
     checkState(pose);
     gPose = pose;
 }
 
-double BaseModelSimulation::getSamplingTime()
+double ModelSimulation::getSamplingTime()
 {
     return gSamplingTime;
 }
 
-void BaseModelSimulation::setSamplingTime(double samplingTime)
+void ModelSimulation::setSamplingTime(double samplingTime)
 {
     checkSamplingTime(samplingTime);
     gSamplingTime = samplingTime;
-    setSimulatorStep(samplingTime/getSimPerCycle());
+    simulator->setIntegrationStep(samplingTime/getSimPerCycle());
 }
 
-int BaseModelSimulation::getSimPerCycle() const
+int ModelSimulation::getSimPerCycle() const
 {
     return gSimPerCycle;
 }
 
-void BaseModelSimulation::checkConstruction(double &samplingTime,
+void ModelSimulation::checkConstruction(double &samplingTime,
         int &simPerCycle, double &initialTime)
 {
     checkSamplingTime(samplingTime);
@@ -130,104 +126,27 @@ void BaseModelSimulation::checkConstruction(double &samplingTime,
         throw std::runtime_error("simPerCycle must be positive");
 }
 
-void BaseModelSimulation::checkSamplingTime(double samplingTime)
+void ModelSimulation::checkSamplingTime(double samplingTime)
 {
     if (samplingTime <= 0)
         throw std::runtime_error("samplingTime must be positive");
 }
 
-void BaseModelSimulation::checkSimulationTime(double simulationTime)
+void ModelSimulation::checkSimulationTime(double simulationTime)
 {
     if (simulationTime < 0)
         throw std::runtime_error("simulationTime must be positive or equal to zero");
 }
 
-void BaseModelSimulation::checkControlInput(const base::Vector6d &control_input)
+void ModelSimulation::checkControlInput(const base::Vector6d &control_input)
 {
     if(control_input.hasNaN())
         throw std::runtime_error("control input has a NaN.");
 }
 
-void BaseModelSimulation::checkState(const PoseVelocityState &state)
+void ModelSimulation::checkState(const PoseVelocityState &state)
 {
     if(state.hasNaN())
         throw std::runtime_error("state has a NaN.");
-}
-
-
-/**********************************************************
- * Simulation of velocity states
- * Use RK4_DYN_SIM simulator
- * Compute velocity states
- **********************************************************/
-DynamicModelSimulation::DynamicModelSimulation(double sampling_time, int sim_per_cycle, double initial_time)
-    :BaseModelSimulation(sampling_time, sim_per_cycle, initial_time)
-{
-    simulator.setIntegrationStep(sampling_time/sim_per_cycle);
-}
-
-DynamicModelSimulation::~DynamicModelSimulation(){}
-
-PoseVelocityState DynamicModelSimulation::calcStates(const PoseVelocityState &actual_pose, const base::Vector6d &control_input)
-{
-    return simulator.calcStates(actual_pose,control_input);
-}
-
-AccelerationState DynamicModelSimulation::getAcceleration() const
-{
-    return simulator.getAcceleration();
-}
-
-UWVParameters DynamicModelSimulation::getUWVParameters() const
-{
-    return simulator.gDynamicModel.getUWVParameters();
-}
-
-void DynamicModelSimulation::setUWVParameters(const UWVParameters &parameters)
-{
-    simulator.gDynamicModel.setUWVParameters(parameters);
-}
-
-void DynamicModelSimulation::setSimulatorStep(double step)
-{
-    simulator.setIntegrationStep(step);
-}
-
-/**********************************************************
- * Simulation of velocity states
- * Use RK4_KIN_SIM simulator
- * Compute all state (pose & velocities)
- **********************************************************/
-ModelSimulation::ModelSimulation(double sampling_time, int sim_per_cycle, double initial_time)
-    :BaseModelSimulation(sampling_time, sim_per_cycle, initial_time)
-{
-    simulator.setIntegrationStep(sampling_time/sim_per_cycle);
-}
-
-ModelSimulation::~ModelSimulation(){}
-
-PoseVelocityState ModelSimulation::calcStates(const PoseVelocityState &actual_pose, const base::Vector6d &control_input)
-{
-    return simulator.calcStates(actual_pose,control_input);
-}
-
-AccelerationState ModelSimulation::getAcceleration() const
-{
-    return simulator.getAcceleration();
-}
-
-UWVParameters ModelSimulation::getUWVParameters() const
-{
-    return simulator.gDynamicModel.getUWVParameters();
-}
-
-void ModelSimulation::setUWVParameters(const UWVParameters &parameters)
-{
-    simulator.gDynamicModel.setUWVParameters(parameters);
-}
-
-void ModelSimulation::setSimulatorStep(double step)
-{
-    simulator.setIntegrationStep(step);
 }
 }

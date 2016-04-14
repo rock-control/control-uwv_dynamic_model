@@ -1,7 +1,7 @@
 #define BOOST_TEST_MODULE UWV_DYNAMIC_MODEL
 #include <boost/test/included/unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
-#include <uwv_dynamic_model/UwvModelSimulation.hpp>
+#include <uwv_dynamic_model/ModelSimulation.hpp>
 #include <iostream>
 
 /**

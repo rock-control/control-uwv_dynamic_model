@@ -6,13 +6,13 @@
 
 namespace uwv_dynamic_model
 {
-class BaseModelSimulation
+class ModelSimulation
 {
 public:
-    BaseModelSimulation(double sampling_time = 0.01, int sim_per_cycle = 10,
-                    double initial_time = 0.0);
+    ModelSimulation(double sampling_time = 0.01, int sim_per_cycle = 10,
+                    double initial_time = 0.0, DynamicSimulator* sim = NULL);
 
-    virtual ~BaseModelSimulation();
+    virtual ~ModelSimulation();
 
     /**
      * Function for sending Effort commands to the model.
@@ -58,13 +58,6 @@ public:
      *  @param UWV Parameters
      */
     virtual void setUWVParameters(const UWVParameters &parameters);
-
-    /** Set simulator step
-     *
-     *  To be override by specific simulator
-     *  @param simulatorStep
-     */
-    virtual void setSimulatorStep(double step);
 
     /** Reset pose states
      *
@@ -175,110 +168,11 @@ private:
      * Current time
      */
     double gCurrentTime;
-};
 
-/**********************************************************
- * Simulation of velocity states
- * Use DYN_SIM simulator
- * Compute velocity states
- **********************************************************/
-class DynamicModelSimulation: public BaseModelSimulation
-{
-public:
-    DynamicModelSimulation(double sampling_time = 0.01, int sim_per_cycle = 10,
-            double initial_time = 0.0);
-
-    virtual ~DynamicModelSimulation();
-
-    /** Compute one step simulation
-     *
-     * @param actual_sates
-     * @param control_input
-     * @return computed states
-     */
-    PoseVelocityState calcStates(const PoseVelocityState &actual_pose, const base::Vector6d &control_input);
-
-    /** Return acceleration
-     *  @return acceleration
-     */
-    AccelerationState getAcceleration() const;
-
-    /** Get UWV Parameters
-     *
-     *  @return UWV Parameters
-     */
-    UWVParameters getUWVParameters() const;
-
-    /** Get UWV Parameters
-     *
-     *  @param UWV Parameters
-     */
-    void setUWVParameters(const UWVParameters &parameters);
-
-    /** Set simulator step
-     *
-     *  @param simulatorStep
-     */
-    void setSimulatorStep(double step);
-
-private:
     /**
-     * Dynamic Simulator
+     * Simulator
      */
-    DynamicSimulator simulator;
-};
-
-
-/**********************************************************
- * Simulation of velocity states
- * Use DYN_KIN_SIM simulator
- * Compute all state (pose & velocities)
- **********************************************************/
-class ModelSimulation: public BaseModelSimulation
-{
-public:
-    ModelSimulation(double sampling_time = 0.01, int sim_per_cycle = 10,
-            double initial_time = 0.0);
-
-    virtual ~ModelSimulation();
-
-    /** Compute one step simulation
-     *
-     * @param actual_sates
-     * @param control_input
-     * @return computed states
-     */
-    PoseVelocityState calcStates(const PoseVelocityState &actual_pose, const base::Vector6d &control_input);
-
-    /** Get acceleration
-     *  @return acceleration
-     */
-    AccelerationState getAcceleration() const;
-
-    /** Get UWV Parameters
-     *
-     *  @return UWV Parameters
-     */
-    UWVParameters getUWVParameters() const;
-
-    /** Get UWV Parameters
-     *
-     *  @param UWV Parameters
-     */
-    void setUWVParameters(const UWVParameters &parameters);
-
-    /** Set simulator step
-     *
-     *  @param simulatorStep
-     */
-    void setSimulatorStep(double step);
-
-private:
-    /**
-     * Dynamic & Kinematic Simulator
-     */
-    DynamicKinematicSimulator simulator;
-
+    DynamicSimulator *simulator;
 };
 };
 #endif

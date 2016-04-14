@@ -15,26 +15,29 @@
  *
  * # ./unit_test --log_level=test_suite
  */
+using namespace uwv_dynamic_model;
+using namespace base;
 
-uwv_dynamic_model::UWVParameters loadParameters(void);
-uwv_dynamic_model::UWVParameters loadRotationalParameters(void);
-base::Vector3d calcOmega(base::Vector3d omega0, double t, double omegan);
-base::Orientation calcOrientation(base::Orientation init_ori, double t, double wn, double wi, base::Vector3d init_ang_mom);
+UWVParameters loadParameters(void);
+UWVParameters loadRotationalParameters(void);
+Vector3d calcOmega(base::Vector3d omega0, double t, double omegan);
+Orientation calcOrientation(base::Orientation init_ori, double t, double wn, double wi, base::Vector3d init_ang_mom);
 
 BOOST_AUTO_TEST_SUITE (CONSTRUCTOR)
 
 
 BOOST_AUTO_TEST_CASE( normal )
 {
-	uwv_dynamic_model::DynamicModelSimulation vehicle;
+    DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
+	ModelSimulation vehicle(0.01, 10, 0, simulator);
+
 	vehicle.setUWVParameters(loadParameters());
 
-	base::Vector6d controlInput(base::Vector6d::Zero());
-
+	Vector6d controlInput(base::Vector6d::Zero());
 	controlInput[0] = 2;
 
-	base::Vector6d velocity(base::Vector6d::Zero());
-	base::Orientation orientation(base::Orientation::Identity());
+	Vector6d velocity(Vector6d::Zero());
+	Orientation orientation(Orientation::Identity());
 
 	for(int i=0; i<200; i++)
 	    vehicle.sendEffort(controlInput);
@@ -46,15 +49,15 @@ BOOST_AUTO_TEST_CASE( normal )
 
 BOOST_AUTO_TEST_CASE( buoyancy )
 {
-    uwv_dynamic_model::ModelSimulation vehicle;
-    uwv_dynamic_model::UWVParameters parameters = loadParameters();
+    ModelSimulation vehicle;
+    UWVParameters parameters = loadParameters();
     parameters.buoyancy = 3;
     parameters.weight = 1;
 
     vehicle.setUWVParameters(parameters);
 
     // No forces being applied
-    base::Vector6d controlInput(base::Vector6d::Zero());
+    Vector6d controlInput(base::Vector6d::Zero());
 
     for(int i=0 ; i<200; i++)
         vehicle.sendEffort(controlInput);
@@ -69,36 +72,79 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity )
     double deltaT = 0.1;
     // One hour simulation
     double t = 60*60*1;
-    uwv_dynamic_model::ModelSimulation vehicle(deltaT, 10, 0);
 
-    uwv_dynamic_model::UWVParameters parameters = loadRotationalParameters();
+    DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
+    ModelSimulation vehicle(deltaT, 10, 0, simulator);
+
+    UWVParameters parameters = loadRotationalParameters();
     vehicle.setUWVParameters(parameters);
 
     // Constant velocity in yaw DOF
-    base::Vector3d omega0(0, 0, 0.10);
-    uwv_dynamic_model::PoseVelocityState init_state;
+    Vector3d omega0(0, 0, 0.10);
+    PoseVelocityState init_state;
     init_state.angular_velocity = omega0;
     vehicle.setPose(init_state);
 
     // Final orientation at time t after constant angular velocity omega0 in yaw DOF
     // q = qw * q(0); qw: rotation about axis w/||w|| through the angle t*||w||
-    base::Orientation orientation = Eigen::AngleAxisd(omega0.norm() * t, omega0/omega0.norm()) * base::Orientation::Identity();
+    Orientation orientation = Eigen::AngleAxisd(omega0.norm() * t, omega0/omega0.norm()) * Orientation::Identity();
 
     // Initial yaw angle
-    BOOST_REQUIRE_EQUAL(base::getYaw(vehicle.getPose().orientation), 0);
+    BOOST_REQUIRE_EQUAL(getYaw(vehicle.getPose().orientation), 0);
 
     // No torque been applied
-    base::Vector6d controlInput(base::Vector6d::Zero());
+    Vector6d controlInput(base::Vector6d::Zero());
 
     // Model simulation
     for (int i = 0; i < t/deltaT; i++)
         vehicle.sendEffort(controlInput);
 
     // Compare simulation result with analytical one.
-    BOOST_CHECK_EQUAL(base::getRoll(vehicle.getPose().orientation), base::getRoll(orientation));
-    BOOST_CHECK_EQUAL(base::getPitch(vehicle.getPose().orientation), base::getPitch(orientation));
+    BOOST_CHECK_EQUAL( getRoll(vehicle.getPose().orientation), getRoll(orientation));
+    BOOST_CHECK_EQUAL( getPitch(vehicle.getPose().orientation), getPitch(orientation));
     //Yaw angle comparison
-    BOOST_CHECK_CLOSE(base::getYaw(vehicle.getPose().orientation)/base::getYaw(orientation), 1, 10^-10);
+    BOOST_CHECK_CLOSE( getYaw(vehicle.getPose().orientation) / getYaw(orientation), 1, 10^-10);
+
+}
+
+
+BOOST_AUTO_TEST_CASE(constant_yaw_velocity_diff_deltaT)
+{
+    double deltaT = 0.2;
+    // One hour simulation
+    double t = 60*60*1;
+
+    DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
+    ModelSimulation vehicle(deltaT, 10, 0, simulator);
+
+    UWVParameters parameters = loadRotationalParameters();
+    vehicle.setUWVParameters(parameters);
+
+    // Constant velocity in yaw DOF
+    Vector3d omega0(0, 0, 0.10);
+    PoseVelocityState init_state;
+    init_state.angular_velocity = omega0;
+    vehicle.setPose(init_state);
+
+    // Final orientation at time t after constant angular velocity omega0 in yaw DOF
+    // q = qw * q(0); qw: rotation about axis w/||w|| through the angle t*||w||
+    Orientation orientation = Eigen::AngleAxisd(omega0.norm() * t, omega0/omega0.norm()) * Orientation::Identity();
+
+    // Initial yaw angle
+    BOOST_REQUIRE_EQUAL(getYaw(vehicle.getPose().orientation), 0);
+
+    // No torque been applied
+    Vector6d controlInput(base::Vector6d::Zero());
+
+    // Model simulation
+    for (int i = 0; i < t/deltaT; i++)
+        vehicle.sendEffort(controlInput);
+
+    // Compare simulation result with analytical one.
+    BOOST_CHECK_EQUAL( getRoll(vehicle.getPose().orientation), getRoll(orientation));
+    BOOST_CHECK_EQUAL( getPitch(vehicle.getPose().orientation), getPitch(orientation));
+    //Yaw angle comparison
+    BOOST_CHECK_CLOSE( getYaw(vehicle.getPose().orientation) / getYaw(orientation), 1, 10^-10);
 
 }
 
@@ -112,9 +158,10 @@ BOOST_AUTO_TEST_CASE( angular )
     // Inertia parameters
     double Jt = 200;
     double J3 = 100;
-    uwv_dynamic_model::ModelSimulation vehicle(deltaT, 10, 0);
+    DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
+    ModelSimulation vehicle(deltaT, 10, 0, simulator);
 
-    uwv_dynamic_model::UWVParameters parameters = loadRotationalParameters();
+    UWVParameters parameters = loadRotationalParameters();
     parameters.inertiaMatrix << 0,   0,   0,   0,   0,    0,
                                 0,   0,   0,   0,   0,    0,
                                 0,   0,   0,   0,   0,    0,
@@ -124,8 +171,8 @@ BOOST_AUTO_TEST_CASE( angular )
     vehicle.setUWVParameters(parameters);
 
     // Initial angular velocity
-    base::Vector3d omega0(0.05, 0, 0.01);
-    uwv_dynamic_model::PoseVelocityState init_state;
+    Vector3d omega0(0.05, 0, 0.01);
+    PoseVelocityState init_state;
     init_state.angular_velocity = omega0;
     vehicle.setPose(init_state);
 
@@ -133,31 +180,31 @@ BOOST_AUTO_TEST_CASE( angular )
     // Body nutation rate
     double wn = omega0[2]*(Jt - J3)/Jt;
     // Initial angular momentum (in this example it should be constant once there will be no torques being applied)
-    base::Vector3d init_ang_mom = parameters.inertiaMatrix.bottomRightCorner<3,3>()*omega0;
+    Vector3d init_ang_mom = parameters.inertiaMatrix.bottomRightCorner<3,3>()*omega0;
     // Inertial nutation rate
     double wi = init_ang_mom.norm()/Jt;
 
     // Final angular velocity at time t
-    base::Vector3d omega = calcOmega(omega0, t, wn);
+    Vector3d omega = calcOmega(omega0, t, wn);
     // Final orientation at time t
-    base::Orientation orientation = calcOrientation(base::Orientation::Identity(), t, wn, wi, init_ang_mom);
+    Orientation final_orientation = calcOrientation(Orientation::Identity(), t, wn, wi, init_ang_mom);
 
     // No torque been applied
-    base::Vector6d controlInput(base::Vector6d::Zero());
+    Vector6d controlInput(Vector6d::Zero());
 
     // Metrics
     // error_quaternion = qs*qa^-1; qs:=simulation; qa:=analytical solution
     // erro_quaternion = [error_imaginary^t error_real]^t
     // small angles: error_imaginary =~ error+_angles/2
     //
-    base::Vector3d error_angles = base::Vector3d::Zero();
-    base::Orientation error_quaternion;
+    Vector3d error_angles = Vector3d::Zero();
+    Orientation error_quaternion;
 
     // Simulation
     for (int i = 1; i <= t/deltaT; i++)
     {
         vehicle.sendEffort(controlInput);
-        error_quaternion = vehicle.getPose().orientation*calcOrientation(base::Orientation::Identity(), i*deltaT, wn, wi, init_ang_mom).inverse();
+        error_quaternion = vehicle.getPose().orientation*calcOrientation(Orientation::Identity(), i*deltaT, wn, wi, init_ang_mom).inverse();
         for(size_t i=0; i<3; i++)
         {
             // Get maximum value for each DOF
@@ -169,10 +216,10 @@ BOOST_AUTO_TEST_CASE( angular )
     for(size_t i=0; i<3; i++)
             BOOST_CHECK_SMALL(error_angles[i], 0.000000000001);
 
-    BOOST_CHECK_CLOSE(base::getRoll(vehicle.getPose().orientation)/base::getRoll(orientation), 1, 10^-10);
-    BOOST_CHECK_CLOSE(base::getPitch(vehicle.getPose().orientation)/base::getPitch(orientation), 1, 10^-10);
-    BOOST_CHECK_CLOSE(base::getYaw(vehicle.getPose().orientation)/base::getYaw(orientation), 1, 10^-10);
-    BOOST_CHECK_CLOSE(vehicle.getPose().angular_velocity[0]/omega[0], 1, 10^-10 );
+    BOOST_CHECK_CLOSE( getRoll(vehicle.getPose().orientation) / getRoll(final_orientation), 1, 10^-10);
+    BOOST_CHECK_CLOSE( getPitch(vehicle.getPose().orientation) / getPitch(final_orientation), 1, 10^-10);
+    BOOST_CHECK_CLOSE( getYaw(vehicle.getPose().orientation) /  getYaw(final_orientation), 1, 10^-10);
+    BOOST_CHECK_CLOSE(vehicle.getPose().angular_velocity[0] / omega[0], 1, 10^-10 );
 
 }
 

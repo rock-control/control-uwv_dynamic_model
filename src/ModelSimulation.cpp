@@ -7,11 +7,11 @@ ModelSimulation::ModelSimulation(double sampling_time, int sim_per_cycle,
                                  double initial_time, DynamicSimulator* sim)
 {
     checkConstruction(sampling_time, sim_per_cycle, initial_time);
-    gSamplingTime = sampling_time;
     gCurrentTime = initial_time;
     gSimPerCycle = sim_per_cycle;
     gPose = PoseVelocityState();
-    simulator = ( sim ) ? sim: new DynamicSimulator(sampling_time / sim_per_cycle);
+    simulator = ( sim ) ? sim: new DynamicSimulator();
+    setSamplingTime(sampling_time);
 }
 
 ModelSimulation::~ModelSimulation()
@@ -107,6 +107,7 @@ double ModelSimulation::getSamplingTime()
 
 void ModelSimulation::setSamplingTime(double samplingTime)
 {
+    // sampling time set equally in simulation and simulator
     checkSamplingTime(samplingTime);
     gSamplingTime = samplingTime;
     simulator->setIntegrationStep(samplingTime/getSimPerCycle());

@@ -42,7 +42,7 @@ public:
     AccelerationState getAcceleration() const;
 
     /**
-     * Access to dynamicModel
+     * Access to dynamic_model
      */
     DynamicModel* getDynamicModel();
 
@@ -51,12 +51,12 @@ private:
     /**
      * Dynamic Model
      */
-    DynamicModel gDynamicModel;
+    DynamicModel dynamic_model;
 
     /**
      * Acceleration variables
      */
-    AccelerationState gAcceleration;
+    AccelerationState acceleration;
 
 };
 

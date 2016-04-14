@@ -48,12 +48,12 @@ struct UWVParameters
     /**
      * Type of model to be used
      */
-    ModelType modelType;
+    ModelType model_type;
 
     /**
      * Inertia matrix. Including added mass.
      */
-    base::Matrix6d inertiaMatrix;
+    base::Matrix6d inertia_matrix;
 
     /**
      * Damping matrix
@@ -62,7 +62,7 @@ struct UWVParameters
      * In COMPLEX case:
      *  dampMatrices[i] = quadDamping[i] / 0<=i<=5
      */
-    std::vector<base::Matrix6d> dampMatrices;
+    std::vector<base::Matrix6d> damping_matrices;
 
     /**
      * Distance from the origin of the body-fixed frame to the center of buoyancy
@@ -86,16 +86,16 @@ struct UWVParameters
 
 
     UWVParameters():
-        modelType(SIMPLE),
-        inertiaMatrix(base::Matrix6d::Identity()),
+        model_type(SIMPLE),
+        inertia_matrix(base::Matrix6d::Identity()),
         distance_body2centerofbuoyancy(Eigen::VectorXd::Zero(3)),
         distance_body2centerofgravity(Eigen::VectorXd::Zero(3)),
         weight(1),
         buoyancy(1)
     {
-        dampMatrices.resize(2);
-        for(size_t i = 0; i < dampMatrices.size(); i++)
-            dampMatrices[i] = Eigen::MatrixXd::Zero(6,6);
+        damping_matrices.resize(2);
+        for(size_t i = 0; i < damping_matrices.size(); i++)
+            damping_matrices[i] = Eigen::MatrixXd::Zero(6,6);
     };
 };
 

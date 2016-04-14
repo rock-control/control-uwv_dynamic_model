@@ -20,18 +20,14 @@
  * to do any transformation.
  */
 
-
 #include "RK4Integrator.hpp"
-#include <math.h>
-#include <base/Logging.hpp>
-#include <iostream>
 
 namespace uwv_dynamic_model
 {
-RK4Integrator::RK4Integrator(double integrationStep)
-:    gIntegStep(integrationStep)
+RK4Integrator::RK4Integrator(double step)
+:    integration_step(step)
 {
-    checkStep(integrationStep);
+    checkStep(step);
 }
 
 RK4Integrator::~RK4Integrator()
@@ -44,12 +40,12 @@ PoseVelocityState RK4Integrator::calcStates(const PoseVelocityState &states, con
 
     // Runge-Kuta coefficients
     PoseVelocityState k1 = deriv(system_states, control_input);
-    PoseVelocityState k2 = deriv(system_states + ((gIntegStep/2)*k1), control_input);
-    PoseVelocityState k3 = deriv(system_states + ((gIntegStep/2)*k2), control_input);
-    PoseVelocityState k4 = deriv(system_states + (gIntegStep*k3), control_input);
+    PoseVelocityState k2 = deriv(system_states + ((integration_step/2)*k1), control_input);
+    PoseVelocityState k3 = deriv(system_states + ((integration_step/2)*k2), control_input);
+    PoseVelocityState k4 = deriv(system_states + (integration_step*k3), control_input);
 
     // Calculating the system states
-    system_states += (gIntegStep/6)*(k1 + 2*k2 + 2*k3 + k4);
+    system_states += (integration_step/6)*(k1 + 2*k2 + 2*k3 + k4);
     return system_states;
 }
 
@@ -74,15 +70,15 @@ PoseVelocityState RK4Integrator::poseDeriv(const PoseVelocityState &current_stat
     return 0*ret;
 }
 
-void RK4Integrator::setIntegrationStep(const double integration_step)
+void RK4Integrator::setIntegrationStep(const double step)
 {
-    checkStep(integration_step);
-    gIntegStep = integration_step;
+    checkStep(step);
+    integration_step = step;
 }
 
-void RK4Integrator::checkStep(double integration_step)
+void RK4Integrator::checkStep(double step)
 {
-    if (integration_step <= 0)
+    if (step <= 0)
         throw std::runtime_error("uwv_dynamic_model: RK4Integrator.cpp: Integration step is equal or smaller than zero.");
 }
 

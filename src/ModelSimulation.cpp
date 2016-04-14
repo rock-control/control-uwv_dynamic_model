@@ -7,9 +7,9 @@ ModelSimulation::ModelSimulation(double sampling_time, int sim_per_cycle,
                                  double initial_time, DynamicSimulator* sim)
 {
     checkConstruction(sampling_time, sim_per_cycle, initial_time);
-    gCurrentTime = initial_time;
-    gSimPerCycle = sim_per_cycle;
-    gPose = PoseVelocityState();
+    current_time = initial_time;
+    simulations_per_cycle = sim_per_cycle;
+    pose = PoseVelocityState();
     simulator = ( sim ) ? sim: new DynamicSimulator();
     setSamplingTime(sampling_time);
 }
@@ -35,13 +35,13 @@ PoseVelocityState ModelSimulation::sendEffort(const base::Vector6d &control_inpu
     PoseVelocityState state = actual_pose;
 
     // Performs iterations to calculate the new system's states
-    for (int i=0; i < gSimPerCycle; i++)
+    for (int i=0; i < simulations_per_cycle; i++)
     {
         state = calcStates(state, control_input);
         //Brute force normalization of quaternions due the RK4 integration.
         state.orientation.normalize();
     }
-    gCurrentTime += gSamplingTime;
+    current_time += sampling_time;
     return state;
 }
 
@@ -67,75 +67,75 @@ void ModelSimulation::setUWVParameters(const UWVParameters &parameters)
 
 void ModelSimulation::resetStates()
 {
-    gPose.position = base::Vector3d::Zero();
-    gPose.orientation = base::Orientation::Identity();
-    gPose.linear_velocity = base::Vector3d::Zero();
-    gPose.angular_velocity = base::Vector3d::Zero();
+    pose.position = base::Vector3d::Zero();
+    pose.orientation = base::Orientation::Identity();
+    pose.linear_velocity = base::Vector3d::Zero();
+    pose.angular_velocity = base::Vector3d::Zero();
 }
 
 void ModelSimulation::setOrientation(const base::Orientation &orientation)
 {
-    gPose.orientation = orientation;
+    pose.orientation = orientation;
 }
 
 double ModelSimulation::getCurrentTime() const
 {
-    return gCurrentTime;
+    return current_time;
 }
 
-void ModelSimulation::setCurrentTime(double currentTime)
+void ModelSimulation::setCurrentTime(double time)
 {
-    checkSimulationTime(currentTime);
-    gCurrentTime = currentTime;
+    checkSimulationTime(time);
+    current_time = time;
 }
 
 PoseVelocityState ModelSimulation::getPose()
 {
-    return gPose;
+    return pose;
 }
 
-void ModelSimulation::setPose(const PoseVelocityState& pose)
+void ModelSimulation::setPose(const PoseVelocityState& current_pose)
 {
-    checkState(pose);
-    gPose = pose;
+    checkState(current_pose);
+    pose = current_pose;
 }
 
 double ModelSimulation::getSamplingTime()
 {
-    return gSamplingTime;
+    return sampling_time;
 }
 
-void ModelSimulation::setSamplingTime(double samplingTime)
+void ModelSimulation::setSamplingTime(double step_time)
 {
     // sampling time set equally in simulation and simulator
-    checkSamplingTime(samplingTime);
-    gSamplingTime = samplingTime;
-    simulator->setIntegrationStep(samplingTime/getSimPerCycle());
+    checkSamplingTime(step_time);
+    sampling_time = step_time;
+    simulator->setIntegrationStep(step_time/getSimPerCycle());
 }
 
 int ModelSimulation::getSimPerCycle() const
 {
-    return gSimPerCycle;
+    return simulations_per_cycle;
 }
 
-void ModelSimulation::checkConstruction(double &samplingTime,
-        int &simPerCycle, double &initialTime)
+void ModelSimulation::checkConstruction(double &sampling_time,
+        int &sim_per_cycle, double &initial_time)
 {
-    checkSamplingTime(samplingTime);
-    checkSimulationTime(initialTime);
-    if (simPerCycle <= 0)
-        throw std::runtime_error("simPerCycle must be positive");
+    checkSamplingTime(sampling_time);
+    checkSimulationTime(initial_time);
+    if (sim_per_cycle <= 0)
+        throw std::runtime_error("simulations_per_cycle must be positive");
 }
 
-void ModelSimulation::checkSamplingTime(double samplingTime)
+void ModelSimulation::checkSamplingTime(double step_time)
 {
-    if (samplingTime <= 0)
-        throw std::runtime_error("samplingTime must be positive");
+    if (step_time <= 0)
+        throw std::runtime_error("sampling_time must be positive");
 }
 
-void ModelSimulation::checkSimulationTime(double simulationTime)
+void ModelSimulation::checkSimulationTime(double simulation_time)
 {
-    if (simulationTime < 0)
+    if (simulation_time < 0)
         throw std::runtime_error("simulationTime must be positive or equal to zero");
 }
 

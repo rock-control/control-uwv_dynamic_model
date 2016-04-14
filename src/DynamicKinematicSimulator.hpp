@@ -30,7 +30,7 @@ private:
     /**
      *  Kinematic Model
      */
-    KinematicModel gKinematicModel;
+    KinematicModel kinematic_model;
 };
 };
 #endif

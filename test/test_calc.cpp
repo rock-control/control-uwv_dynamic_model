@@ -33,14 +33,14 @@ BOOST_AUTO_TEST_CASE( normal )
 
 	vehicle.setUWVParameters(loadParameters());
 
-	Vector6d controlInput(base::Vector6d::Zero());
-	controlInput[0] = 2;
+	Vector6d control_input(base::Vector6d::Zero());
+	control_input[0] = 2;
 
 	Vector6d velocity(Vector6d::Zero());
 	Orientation orientation(Orientation::Identity());
 
 	for(int i=0; i<200; i++)
-	    vehicle.sendEffort(controlInput);
+	    vehicle.sendEffort(control_input);
 
 	// For init velocity=0 and inertia term=1, quadratic and linear damping equal to 1, the steady state velocity in surge dof must be 1.
 	BOOST_REQUIRE_CLOSE(vehicle.getPose().linear_velocity[0], 1, 1);
@@ -57,10 +57,10 @@ BOOST_AUTO_TEST_CASE( buoyancy )
     vehicle.setUWVParameters(parameters);
 
     // No forces being applied
-    Vector6d controlInput(base::Vector6d::Zero());
+    Vector6d control_input(base::Vector6d::Zero());
 
     for(int i=0 ; i<200; i++)
-        vehicle.sendEffort(controlInput);
+        vehicle.sendEffort(control_input);
 
     // For init velocity=0 and inertia term=1, quadratic and linear damping equal to 1 and gravitational force equal 2, the steady state velocity in heave dof must be 1.
     BOOST_REQUIRE_CLOSE(vehicle.getPose().linear_velocity[2], 1, 1);
@@ -93,11 +93,11 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity )
     BOOST_REQUIRE_EQUAL(getYaw(vehicle.getPose().orientation), 0);
 
     // No torque been applied
-    Vector6d controlInput(base::Vector6d::Zero());
+    Vector6d control_input(base::Vector6d::Zero());
 
     // Model simulation
     for (int i = 0; i < t/deltaT; i++)
-        vehicle.sendEffort(controlInput);
+        vehicle.sendEffort(control_input);
 
     // Compare simulation result with analytical one.
     BOOST_CHECK_EQUAL( getRoll(vehicle.getPose().orientation), getRoll(orientation));
@@ -134,11 +134,11 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity_diff_deltaT)
     BOOST_REQUIRE_EQUAL(getYaw(vehicle.getPose().orientation), 0);
 
     // No torque been applied
-    Vector6d controlInput(base::Vector6d::Zero());
+    Vector6d control_input(base::Vector6d::Zero());
 
     // Model simulation
     for (int i = 0; i < t/deltaT; i++)
-        vehicle.sendEffort(controlInput);
+        vehicle.sendEffort(control_input);
 
     // Compare simulation result with analytical one.
     BOOST_CHECK_EQUAL( getRoll(vehicle.getPose().orientation), getRoll(orientation));
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE( angular )
     ModelSimulation vehicle(deltaT, 10, 0, simulator);
 
     UWVParameters parameters = loadRotationalParameters();
-    parameters.inertiaMatrix << 0,   0,   0,   0,   0,    0,
+    parameters.inertia_matrix << 0,   0,   0,   0,   0,    0,
                                 0,   0,   0,   0,   0,    0,
                                 0,   0,   0,   0,   0,    0,
                                 0,   0,   0,   Jt,   0,    0,
@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE( angular )
     // Body nutation rate
     double wn = omega0[2]*(Jt - J3)/Jt;
     // Initial angular momentum (in this example it should be constant once there will be no torques being applied)
-    Vector3d init_ang_mom = parameters.inertiaMatrix.bottomRightCorner<3,3>()*omega0;
+    Vector3d init_ang_mom = parameters.inertia_matrix.bottomRightCorner<3,3>()*omega0;
     // Inertial nutation rate
     double wi = init_ang_mom.norm()/Jt;
 
@@ -190,7 +190,7 @@ BOOST_AUTO_TEST_CASE( angular )
     Orientation final_orientation = calcOrientation(Orientation::Identity(), t, wn, wi, init_ang_mom);
 
     // No torque been applied
-    Vector6d controlInput(Vector6d::Zero());
+    Vector6d control_input(Vector6d::Zero());
 
     // Metrics
     // error_quaternion = qs*qa^-1; qs:=simulation; qa:=analytical solution
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE( angular )
     // Simulation
     for (int i = 1; i <= t/deltaT; i++)
     {
-        vehicle.sendEffort(controlInput);
+        vehicle.sendEffort(control_input);
         error_quaternion = vehicle.getPose().orientation*calcOrientation(Orientation::Identity(), i*deltaT, wn, wi, init_ang_mom).inverse();
         for(size_t i=0; i<3; i++)
         {
@@ -231,20 +231,20 @@ BOOST_AUTO_TEST_SUITE_END()
 uwv_dynamic_model::UWVParameters loadParameters(void)
 {
     uwv_dynamic_model::UWVParameters parameters;
-	parameters.inertiaMatrix << 1,   0,   0,   0,   0,    0,
+	parameters.inertia_matrix << 1,   0,   0,   0,   0,    0,
 			   	   	   	   	   	   0, 	1,   0,   0,   0,    0,
 								   0,   0, 	 1,   0,   0,    0,
 								   0,   0,   0,   1,   0,    0,
 								   0,   0,   0,   0,   1,  	 0,
 								   0,   0,   0,   0,   0, 	 1;
-	parameters.dampMatrices.resize(2);
-	parameters.dampMatrices[0] << 1,   0,   0,   0,   0,    0,
+	parameters.damping_matrices.resize(2);
+	parameters.damping_matrices[0] << 1,   0,   0,   0,   0,    0,
 			   	   	   	   	   	   0,   1,   0,   0,   0,    0,
 								   0,   0,   1,   0,   0,    0,
 								   0,   0,   0,   1,   0,    0,
 								   0,   0,   0,   0,   1,  	 0,
 								   0,   0,   0,   0,   0, 	 1;
-	parameters.dampMatrices[1] << 1,   0,   0,   0,   0,    0,
+	parameters.damping_matrices[1] << 1,   0,   0,   0,   0,    0,
 									0,   1,   0,   0,   0,    0,
 									0,   0,   1,   0,   0,    0,
 									0,   0,   0,   1,   0,    0,
@@ -257,17 +257,17 @@ uwv_dynamic_model::UWVParameters loadParameters(void)
 uwv_dynamic_model::UWVParameters loadRotationalParameters(void)
 {
     uwv_dynamic_model::UWVParameters parameters;
-    parameters.modelType = uwv_dynamic_model::COMPLEX;
-    parameters.inertiaMatrix << 0,   0,   0,   0,   0,    0,
+    parameters.model_type = uwv_dynamic_model::COMPLEX;
+    parameters.inertia_matrix << 0,   0,   0,   0,   0,    0,
                                    0,   0,   0,   0,   0,    0,
                                    0,   0,   0,   0,   0,    0,
                                    0,   0,   0,   1,   0,    0,
                                    0,   0,   0,   0,   1,    0,
                                    0,   0,   0,   0,   0,    1;
-    parameters.dampMatrices.resize(6);
-    for(size_t i=0; i<parameters.dampMatrices.size(); i++)
+    parameters.damping_matrices.resize(6);
+    for(size_t i=0; i<parameters.damping_matrices.size(); i++)
     {
-        parameters.dampMatrices[i] << 0,   0,   0,   0,   0,    0,
+        parameters.damping_matrices[i] << 0,   0,   0,   0,   0,    0,
                                         0,   0,   0,   0,   0,    0,
                                         0,   0,   0,   0,   0,    0,
                                         0,   0,   0,   0,   0,    0,

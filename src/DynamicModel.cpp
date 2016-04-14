@@ -23,30 +23,30 @@ base::Vector6d DynamicModel::calcAcceleration(const base::Vector6d &control_inpu
     // Calculating the acceleration based on all the hydrodynamics effects
     base::Vector6d acceleration = base::Vector6d::Zero();
 
-    acceleration = control_input - calcGravityBuoyancy(orientation, gUwvParameters);
-    switch(gUwvParameters.modelType)
+    acceleration = control_input - calcGravityBuoyancy(orientation, uwv_parameters);
+    switch(uwv_parameters.model_type)
     {
     case SIMPLE:
-        acceleration  -=  caclSimpleDamping(gUwvParameters.dampMatrices, velocity);
+        acceleration  -=  caclSimpleDamping(uwv_parameters.damping_matrices, velocity);
         break;
     case COMPLEX:
-        acceleration  -= (calcCoriolisEffect(gUwvParameters.inertiaMatrix, velocity) + caclGeneralQuadDamping(gUwvParameters.dampMatrices, velocity));
+        acceleration  -= (calcCoriolisEffect(uwv_parameters.inertia_matrix, velocity) + caclGeneralQuadDamping(uwv_parameters.damping_matrices, velocity));
         break;
     }
-    return gInvInertiaMatrix*acceleration;
+    return invert_inertia_matrix*acceleration;
 }
 
-void DynamicModel::setUWVParameters(const UWVParameters &uwv_parameters)
+void DynamicModel::setUWVParameters(const UWVParameters &parameters)
 {
     // Checks if there is any parameter inconsistency
-    checkParameters(uwv_parameters);
-    gUwvParameters = uwv_parameters;
-    gInvInertiaMatrix = calcInvInertiaMatrix(uwv_parameters.inertiaMatrix);
+    checkParameters(parameters);
+    uwv_parameters = parameters;
+    invert_inertia_matrix = calcInvInertiaMatrix(uwv_parameters.inertia_matrix);
 }
 
 UWVParameters DynamicModel::getUWVParameters(void) const
 {
-    return gUwvParameters;
+    return uwv_parameters;
 }
 
 base::Matrix6d DynamicModel::calcInvInertiaMatrix(const base::Matrix6d &inertia_matrix) const
@@ -146,11 +146,11 @@ base::Vector6d DynamicModel::calcGravityBuoyancy( const base::Orientation& orien
 
 void DynamicModel::checkParameters(const UWVParameters &uwv_parameters)
 {
-    if(uwv_parameters.modelType == SIMPLE && uwv_parameters.dampMatrices.size() != 2)
-        throw std::invalid_argument("in SIMPLE model, dampMatrices should have two elements, the linDampingMatrix and quadDampingMatrix");
+    if(uwv_parameters.model_type == SIMPLE && uwv_parameters.damping_matrices.size() != 2)
+        throw std::invalid_argument("in SIMPLE model, damping_matrices should have two elements, the linear damping matrix and quadratic damping matrix");
 
-    if(uwv_parameters.modelType == COMPLEX && uwv_parameters.dampMatrices.size() != 6)
-        throw std::invalid_argument("in COMPLEX model, dampMatrices should have six elements, one quadDampingMatrix / DOF");
+    if(uwv_parameters.model_type == COMPLEX && uwv_parameters.damping_matrices.size() != 6)
+        throw std::invalid_argument("in COMPLEX model, damping_matrices should have six elements, one quadratic damping matrix / DOF");
 
     if(uwv_parameters.weight <= 0)
         throw std::invalid_argument("weight must be a positive value");

@@ -80,7 +80,7 @@ public:
      *
      *  @param Current Time
      */
-    void setCurrentTime(double currentTime);
+    void setCurrentTime(double current_time);
 
     /** Get Pose
      *
@@ -104,7 +104,7 @@ public:
      *
      *  @param sampling time
      */
-    void setSamplingTime(double samplingTime);
+    void setSamplingTime(double sampling_time);
 
     /** Get Simulations per Cycle
      *
@@ -155,19 +155,19 @@ private:
     /**
      * Pose states
      */
-    PoseVelocityState gPose;
+    PoseVelocityState pose;
 
     /**
      * SIMULATION PARAMETERS
      */
 
-    double gSamplingTime;
-    int gSimPerCycle;
+    double sampling_time;
+    int simulations_per_cycle;
 
     /**
      * Current time
      */
-    double gCurrentTime;
+    double current_time;
 
     /**
      * Simulator

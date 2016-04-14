@@ -16,8 +16,8 @@ DynamicKinematicSimulator::~DynamicKinematicSimulator()
 PoseVelocityState DynamicKinematicSimulator::poseDeriv(const PoseVelocityState &current_states)
 {
     PoseVelocityState deriv;
-    deriv.position = gKinematicModel.calcPoseDeriv(current_states.linear_velocity, current_states.orientation);
-    deriv.orientation = gKinematicModel.calcOrientationDeriv(current_states.angular_velocity, current_states.orientation);
+    deriv.position = kinematic_model.calcPoseDeriv(current_states.linear_velocity, current_states.orientation);
+    deriv.orientation = kinematic_model.calcOrientationDeriv(current_states.angular_velocity, current_states.orientation);
     return deriv;
 }
 

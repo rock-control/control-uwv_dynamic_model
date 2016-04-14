@@ -140,12 +140,12 @@ private:
      * MODEL PARAMETERS
      */
 
-    UWVParameters gUwvParameters;
+    UWVParameters uwv_parameters;
 
     /**
      * Inverse of inertia matrix
      */
-    base::Matrix6d gInvInertiaMatrix;
+    base::Matrix6d invert_inertia_matrix;
 };
 };
 #endif

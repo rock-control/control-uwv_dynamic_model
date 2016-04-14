@@ -18,15 +18,14 @@ PoseVelocityState DynamicSimulator::velocityDeriv(const PoseVelocityState &curre
     velocity.head(3) = current_states.linear_velocity;
     velocity.tail(3) = current_states.angular_velocity;
 
-    // Compute acceleration (velocity derivatives)
-    base::Vector6d acceleration = gDynamicModel.calcAcceleration(control_input, velocity, current_states.orientation);
+    base::Vector6d vector_acceleration = dynamic_model.calcAcceleration(control_input, velocity, current_states.orientation);
 
     PoseVelocityState deriv;
-    deriv.linear_velocity = acceleration.head<3>();
-    deriv.angular_velocity = acceleration.tail<3>();
+    deriv.linear_velocity = vector_acceleration.head<3>();
+    deriv.angular_velocity = vector_acceleration.tail<3>();
 
-    gAcceleration.linear_acceleration = acceleration.head<3>();
-    gAcceleration.angular_acceleration = acceleration.tail<3>();
+    acceleration.linear_acceleration = vector_acceleration.head<3>();
+    acceleration.angular_acceleration = vector_acceleration.tail<3>();
 
     return deriv;
 }
@@ -39,11 +38,11 @@ PoseVelocityState DynamicSimulator::poseDeriv(const PoseVelocityState &current_s
 
 AccelerationState DynamicSimulator::getAcceleration() const
 {
-    return gAcceleration;
+    return acceleration;
 }
 
 DynamicModel* DynamicSimulator::getDynamicModel()
 {
-    return &gDynamicModel;
+    return &dynamic_model;
 }
 };

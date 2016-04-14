@@ -10,7 +10,6 @@
 #ifndef RK4_INTEGRATOR_HPP
 #define RK4_INTEGRATOR_HPP
 
-#include <base/Eigen.hpp>
 #include "DataTypes.hpp"
 #include <stdexcept>
 
@@ -44,7 +43,6 @@ public:
      * @param current state
      * @param control input
      * @return state derivatives
-     *
      */
     PoseVelocityState deriv(const PoseVelocityState &current_states, const base::Vector6d &control_input);
 
@@ -72,17 +70,17 @@ public:
      *
      *  @param step
      */
-    void setIntegrationStep(double integration_step);
+    void setIntegrationStep(double step);
 
 private:
 
     /**
      * Integration step size
      */
-    double gIntegStep;
+    double integration_step;
 
 
-    void checkStep(double integration_step);
+    void checkStep(double step);
     void checkInputs(const PoseVelocityState &states, const base::Vector6d &control_input);
 };
 };

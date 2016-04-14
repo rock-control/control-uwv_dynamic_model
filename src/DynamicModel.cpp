@@ -1,4 +1,4 @@
-#include "UwvDynamicModel.hpp"
+#include "DynamicModel.hpp"
 #include <base/Logging.hpp>
 
 namespace uwv_dynamic_model

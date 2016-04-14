@@ -1,10 +1,8 @@
-#ifndef _UWV_MODEL_SIMULATION_H_
-#define _UWV_MODEL_SIMULATION_H_
+#ifndef _MODEL_SIMULATION_H_
+#define _MODEL_SIMULATION_H_
 
-#include "RK4Integrator.hpp"
-#include "DataTypes.hpp"
-#include "UwvDynamicModel.hpp"
-#include "UwvKinematicModel.hpp"
+#include "DynamicSimulator.hpp"
+#include "DynamicKinematicSimulator.hpp"
 
 namespace uwv_dynamic_model
 {
@@ -227,7 +225,7 @@ private:
     /**
      * Dynamic Simulator
      */
-    DYN_SIM simulator;
+    DynamicSimulator simulator;
 };
 
 
@@ -279,7 +277,7 @@ private:
     /**
      * Dynamic & Kinematic Simulator
      */
-    DYN_KIN_SIM simulator;
+    DynamicKinematicSimulator simulator;
 
 };
 };

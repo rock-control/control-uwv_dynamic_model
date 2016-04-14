@@ -1,5 +1,5 @@
-#ifndef _UWV_KINEMATIC_MODEL_H_
-#define _UWV_KINEMATIC_MODEL_H_
+#ifndef _KINEMATIC_MODEL_H_
+#define _KINEMATIC_MODEL_H_
 
 #include "DataTypes.hpp"
 

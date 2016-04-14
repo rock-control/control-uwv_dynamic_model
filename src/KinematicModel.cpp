@@ -1,4 +1,4 @@
-#include "UwvKinematicModel.hpp"
+#include "KinematicModel.hpp"
 
 namespace uwv_dynamic_model
 {

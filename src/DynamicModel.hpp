@@ -1,5 +1,5 @@
-#ifndef _UWV_DYNAMIC_MODEL_H_
-#define _UWV_DYNAMIC_MODEL_H_
+#ifndef _DYNAMIC_MODEL_H_
+#define _DYNAMIC_MODEL_H_
 
 #include "DataTypes.hpp"
 

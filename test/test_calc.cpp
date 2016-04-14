@@ -44,6 +44,8 @@ BOOST_AUTO_TEST_CASE( normal )
 
 	// For init velocity=0 and inertia term=1, quadratic and linear damping equal to 1, the steady state velocity in surge dof must be 1.
 	BOOST_REQUIRE_CLOSE(vehicle.getPose().linear_velocity[0], 1, 1);
+
+	delete simulator;
 }
 
 
@@ -105,6 +107,7 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity )
     //Yaw angle comparison
     BOOST_CHECK_CLOSE( getYaw(vehicle.getPose().orientation) / getYaw(orientation), 1, 10^-10);
 
+    delete simulator;
 }
 
 
@@ -146,6 +149,7 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity_diff_deltaT)
     //Yaw angle comparison
     BOOST_CHECK_CLOSE( getYaw(vehicle.getPose().orientation) / getYaw(orientation), 1, 10^-10);
 
+    delete simulator;
 }
 
 BOOST_AUTO_TEST_CASE( angular )
@@ -221,6 +225,7 @@ BOOST_AUTO_TEST_CASE( angular )
     BOOST_CHECK_CLOSE( getYaw(vehicle.getPose().orientation) /  getYaw(final_orientation), 1, 10^-10);
     BOOST_CHECK_CLOSE(vehicle.getPose().angular_velocity[0] / omega[0], 1, 10^-10 );
 
+    delete simulator;
 }
 
 

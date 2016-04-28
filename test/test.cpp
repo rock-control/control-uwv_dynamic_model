@@ -22,11 +22,6 @@ UWVParameters loadParameters(void);
 
 BOOST_AUTO_TEST_SUITE (CONSTRUCTOR)
 
-BOOST_AUTO_TEST_CASE( no_simulator )
-{
-    BOOST_REQUIRE_THROW( ModelSimulation vehicle, std::runtime_error);
-}
-
 BOOST_AUTO_TEST_CASE( null_control_order )
 {
 	BOOST_REQUIRE_NO_THROW( DynamicModel vehicle);

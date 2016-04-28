@@ -7,10 +7,11 @@ ModelSimulation::ModelSimulation(DynamicSimulator* sim, double sampling_time, in
                                  double initial_time)
 {
     checkConstruction(sampling_time, sim_per_cycle, initial_time);
+    if(!sim)
+        throw std::runtime_error("No simulator used.");
     current_time = initial_time;
     simulations_per_cycle = sim_per_cycle;
     pose = PoseVelocityState();
-    checkSimulator(sim);
     simulator = sim;
     setSamplingTime(sampling_time);
 }
@@ -147,11 +148,5 @@ void ModelSimulation::checkState(const PoseVelocityState &state)
 {
     if(state.hasNaN())
         throw std::runtime_error("state has a NaN.");
-}
-
-void ModelSimulation::checkSimulator(DynamicSimulator* simulator)
-{
-    if(!simulator)
-        throw std::runtime_error("No simulator used.");
 }
 }

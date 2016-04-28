@@ -9,7 +9,7 @@ namespace uwv_dynamic_model
 class ModelSimulation
 {
 public:
-    ModelSimulation(DynamicSimulator* sim = NULL, double sampling_time = 0.01, int sim_per_cycle = 10,
+    ModelSimulation(DynamicSimulator* sim, double sampling_time = 0.01, int sim_per_cycle = 10,
                     double initial_time = 0.0);
 
     virtual ~ModelSimulation();
@@ -121,12 +121,6 @@ private:
      *  @param initialTime
      */
     void checkConstruction(double &sampling_time, int &sim_per_cycle, double &initial_time);
-
-    /** Check if simulator is valid
-     *
-     *  @param simulator
-     */
-    void checkSimulator(DynamicSimulator* simulator);
 
     /** Check sampling time
      *

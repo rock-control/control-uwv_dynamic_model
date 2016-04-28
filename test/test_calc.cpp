@@ -29,7 +29,7 @@ BOOST_AUTO_TEST_SUITE (CONSTRUCTOR)
 BOOST_AUTO_TEST_CASE( normal )
 {
     DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
-	ModelSimulation vehicle(0.01, 10, 0, simulator);
+	ModelSimulation vehicle(simulator, 0.01, 10, 0);
 
 	vehicle.setUWVParameters(loadParameters());
 
@@ -51,7 +51,8 @@ BOOST_AUTO_TEST_CASE( normal )
 
 BOOST_AUTO_TEST_CASE( buoyancy )
 {
-    ModelSimulation vehicle;
+    DynamicSimulator *simulator = new DynamicSimulator();
+    ModelSimulation vehicle(simulator);
     UWVParameters parameters = loadParameters();
     parameters.buoyancy = 3;
     parameters.weight = 1;
@@ -67,6 +68,8 @@ BOOST_AUTO_TEST_CASE( buoyancy )
     // For init velocity=0 and inertia term=1, quadratic and linear damping equal to 1 and gravitational force equal 2, the steady state velocity in heave dof must be 1.
     BOOST_REQUIRE_CLOSE(vehicle.getPose().linear_velocity[2], 1, 1);
 
+    delete simulator;
+
 }
 
 BOOST_AUTO_TEST_CASE(constant_yaw_velocity )
@@ -76,7 +79,7 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity )
     double t = 60*60*1;
 
     DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
-    ModelSimulation vehicle(deltaT, 10, 0, simulator);
+    ModelSimulation vehicle(simulator, deltaT, 10, 0);
 
     UWVParameters parameters = loadRotationalParameters();
     vehicle.setUWVParameters(parameters);
@@ -118,7 +121,7 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity_diff_deltaT)
     double t = 60*60*1;
 
     DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
-    ModelSimulation vehicle(deltaT, 10, 0, simulator);
+    ModelSimulation vehicle(simulator, deltaT, 10, 0);
 
     UWVParameters parameters = loadRotationalParameters();
     vehicle.setUWVParameters(parameters);
@@ -163,7 +166,7 @@ BOOST_AUTO_TEST_CASE( angular )
     double Jt = 200;
     double J3 = 100;
     DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
-    ModelSimulation vehicle(deltaT, 10, 0, simulator);
+    ModelSimulation vehicle(simulator, deltaT, 10, 0);
 
     UWVParameters parameters = loadRotationalParameters();
     parameters.inertia_matrix << 0,   0,   0,   0,   0,    0,

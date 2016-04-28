@@ -3,14 +3,15 @@
 
 namespace uwv_dynamic_model
 {
-ModelSimulation::ModelSimulation(double sampling_time, int sim_per_cycle,
-                                 double initial_time, DynamicSimulator* sim)
+ModelSimulation::ModelSimulation(DynamicSimulator* sim, double sampling_time, int sim_per_cycle,
+                                 double initial_time)
 {
     checkConstruction(sampling_time, sim_per_cycle, initial_time);
     current_time = initial_time;
     simulations_per_cycle = sim_per_cycle;
     pose = PoseVelocityState();
-    simulator = ( sim ) ? sim: new DynamicSimulator();
+    checkSimulator(sim);
+    simulator = sim;
     setSamplingTime(sampling_time);
 }
 
@@ -146,5 +147,11 @@ void ModelSimulation::checkState(const PoseVelocityState &state)
 {
     if(state.hasNaN())
         throw std::runtime_error("state has a NaN.");
+}
+
+void ModelSimulation::checkSimulator(DynamicSimulator* simulator)
+{
+    if(!simulator)
+        throw std::runtime_error("No simulator used.");
 }
 }

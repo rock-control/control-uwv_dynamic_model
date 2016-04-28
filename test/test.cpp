@@ -22,6 +22,11 @@ UWVParameters loadParameters(void);
 
 BOOST_AUTO_TEST_SUITE (CONSTRUCTOR)
 
+BOOST_AUTO_TEST_CASE( no_simulator )
+{
+    BOOST_REQUIRE_THROW( ModelSimulation vehicle, std::runtime_error);
+}
+
 BOOST_AUTO_TEST_CASE( null_control_order )
 {
 	BOOST_REQUIRE_NO_THROW( DynamicModel vehicle);
@@ -183,7 +188,8 @@ BOOST_AUTO_TEST_CASE( normal )
 
 BOOST_AUTO_TEST_CASE( unset_command )
 {
-    ModelSimulation vehicle;
+    DynamicSimulator *simulator = new DynamicSimulator();
+    ModelSimulation vehicle(simulator);
     UWVParameters parameters = loadParameters();
 
     BOOST_REQUIRE_NO_THROW(vehicle.setUWVParameters(parameters));
@@ -194,6 +200,7 @@ BOOST_AUTO_TEST_CASE( unset_command )
 
     BOOST_REQUIRE_THROW(vehicle.sendEffort(controlInput), std::runtime_error);
 
+    delete simulator;
 }
 
 

@@ -36,11 +36,8 @@ PoseVelocityState ModelSimulation::sendEffort(const base::Vector6d &control_inpu
 
     // Performs iterations to calculate the new system's states
     for (int i=0; i < simulations_per_cycle; i++)
-    {
         state = calcStates(state, control_input);
-        //Brute force normalization of quaternions due the RK4 integration.
-        state.orientation.normalize();
-    }
+
     current_time += sampling_time;
     return state;
 }

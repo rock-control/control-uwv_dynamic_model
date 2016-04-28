@@ -46,6 +46,10 @@ PoseVelocityState RK4Integrator::calcStates(const PoseVelocityState &states, con
 
     // Calculating the system states
     system_states += (integration_step/6)*(k1 + 2*k2 + 2*k3 + k4);
+
+    //Brute force normalization of quaternions due the RK4 integration.
+    system_states.orientation.normalize();
+
     return system_states;
 }
 

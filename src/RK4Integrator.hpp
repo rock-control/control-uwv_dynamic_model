@@ -10,99 +10,78 @@
 #ifndef RK4_INTEGRATOR_HPP
 #define RK4_INTEGRATOR_HPP
 
-#include <base/Eigen.hpp>
+#include "DataTypes.hpp"
+#include <stdexcept>
 
-namespace underwaterVehicle
+namespace uwv_dynamic_model
 {
-class RK4_SIM
+class RK4Integrator
 {
 public:
 
-    /*
-     * Constructor
+    /* Constructor
+     *
+     * Constructor for Generic state space representation
+     * @param step
      */
-    RK4_SIM(int &controlOrder,
-            double integrationStep);
+    RK4Integrator( double integration_step = 0.01);
 
-    /**
-     *	Performs one step simulation
+    virtual ~RK4Integrator();
+
+    /** Performs one step simulation.
+     *
+     *  Particular case of state space representation. PoseVelocityState structure instead of vector of states.
+     *	@param actual state
+     *	@param control_input
+     *	@return next state
      */
-    void calcStates(Eigen::VectorXd &systemStates,
-            double &currentTime,
-            const base::Vector6d &controlInput);
+    PoseVelocityState calcStates(const PoseVelocityState &states, const base::Vector6d &control_input);
 
-    /*
-     * Uses the system's dynamic equations in order to calculate the
-     * acceleration according to the current system states and control
-     * input.
+    /* Compute derivatives of states
+     *
+     * Particular case of state space representation. PoseVelocityState structure instead of vector of states.
+     * @param current state
+     * @param control input
+     * @return state derivatives
+     */
+    PoseVelocityState deriv(const PoseVelocityState &current_states, const base::Vector6d &control_input);
+
+    /** Compute derivative of velocity states
+     *
+     *  @param current state
+     *  @param control input
+     *  @return velocity derivatives
+     *
      * This function is overloaded in the derived class.
      */
-    virtual void calcAcceleration(Eigen::VectorXd &acceleration,
-            const base::Vector6d &velocity,
-            const base::Vector6d &controlInput) = 0;
+    virtual PoseVelocityState velocityDeriv(const PoseVelocityState &current_states, const base::Vector6d &control_input);
 
-    void setIntegrationStep(const double integrationStep);
+    /** Compute derivative of pose states
+     *
+     *  @param current state
+     *  @return pose derivatives
+     *
+     * This function is overloaded in the derived class.
+     */
+    virtual PoseVelocityState poseDeriv(const PoseVelocityState &current_states);
+
+
+    /** Set step
+     *
+     *  @param step
+     */
+    void setIntegrationStep(double step);
 
 private:
 
     /**
-     * Number of control inputs
-     */
-    const int gControlOrder;
-
-    /**
-     * Number of system states
-     */
-    const int gSystemOrder;
-
-    /**
      * Integration step size
      */
-    double gIntegStep;
-
-    bool error;
+    double integration_step;
 
 
-    /**
-     * Calculates the k1 coefficient of the Runge-Kutta Integration method
-     */
-    inline void calcK1 (Eigen::VectorXd &k1,
-            const base::Vector6d &velocity,
-            const base::Vector6d &controlInput);
-
-    /**
-     * Calculates the k2 coefficient of the Runge-Kutta Integration method
-     */
-    inline void calcK2 (Eigen::VectorXd &k2,
-            const Eigen::VectorXd &k1,
-            base::Vector6d velocity,
-            const base::Vector6d &controlInput);
-
-    /**
-     * Calculates the k3 coefficient of the Runge-Kutta Integration method
-     */
-    inline void calcK3 (Eigen::VectorXd &k3,
-            const Eigen::VectorXd &k2,
-            base::Vector6d velocity,
-            const base::Vector6d &controlInput);
-
-    /**
-     * Calculates the k4 coefficient of the Runge-Kutta Integration method
-     */
-    inline void calcK4 (Eigen::VectorXd &k4,
-            const Eigen::VectorXd &k3,
-            base::Vector6d velocity,
-            const base::Vector6d &controlInput);
-
-    /**
-     * Update the given k coefficient according to the integration step value
-     */
-    inline void updateCoefficient(Eigen::VectorXd &k);
-
-    void checkConstruction(int &controlOrder, double &integrationStep);
-    void checkInputs(Eigen::VectorXd &systemStates,
-            double &currentTime,
-            const base::Vector6d &controlInput);
+    void checkStep(double step);
+    void checkInputs(const PoseVelocityState &states, const base::Vector6d &control_input);
 };
 };
 

@@ -60,12 +60,12 @@ AccelerationState ModelSimulation::getAcceleration() const
 
 UWVParameters ModelSimulation::getUWVParameters() const
 {
-    return simulator->getDynamicModel()->getUWVParameters();
+    return simulator->getDynamicModel().getUWVParameters();
 }
 
 void ModelSimulation::setUWVParameters(const UWVParameters &parameters)
 {
-    return simulator->getDynamicModel()->setUWVParameters(parameters);
+    return simulator->getDynamicModel().setUWVParameters(parameters);
 }
 
 void ModelSimulation::resetStates()

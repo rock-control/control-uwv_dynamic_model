@@ -28,8 +28,7 @@ BOOST_AUTO_TEST_SUITE (CONSTRUCTOR)
 
 BOOST_AUTO_TEST_CASE( normal )
 {
-    DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
-	ModelSimulation vehicle(simulator, 0.01, 10, 0);
+	ModelSimulation vehicle(DYNAMIC_KINEMATIC, 0.01, 10, 0);
 
 	vehicle.setUWVParameters(loadParameters());
 
@@ -45,14 +44,12 @@ BOOST_AUTO_TEST_CASE( normal )
 	// For init velocity=0 and inertia term=1, quadratic and linear damping equal to 1, the steady state velocity in surge dof must be 1.
 	BOOST_REQUIRE_CLOSE(vehicle.getPose().linear_velocity[0], 1, 1);
 
-	delete simulator;
 }
 
 
 BOOST_AUTO_TEST_CASE( buoyancy )
 {
-    DynamicSimulator *simulator = new DynamicSimulator();
-    ModelSimulation vehicle(simulator);
+    ModelSimulation vehicle(DYNAMIC);
     UWVParameters parameters = loadParameters();
     parameters.buoyancy = 3;
     parameters.weight = 1;
@@ -68,8 +65,6 @@ BOOST_AUTO_TEST_CASE( buoyancy )
     // For init velocity=0 and inertia term=1, quadratic and linear damping equal to 1 and gravitational force equal 2, the steady state velocity in heave dof must be 1.
     BOOST_REQUIRE_CLOSE(vehicle.getPose().linear_velocity[2], 1, 1);
 
-    delete simulator;
-
 }
 
 BOOST_AUTO_TEST_CASE(constant_yaw_velocity )
@@ -78,8 +73,7 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity )
     // One hour simulation
     double t = 60*60*1;
 
-    DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
-    ModelSimulation vehicle(simulator, deltaT, 10, 0);
+    ModelSimulation vehicle(DYNAMIC_KINEMATIC, deltaT, 10, 0);
 
     UWVParameters parameters = loadRotationalParameters();
     vehicle.setUWVParameters(parameters);
@@ -110,7 +104,6 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity )
     //Yaw angle comparison
     BOOST_CHECK_CLOSE( getYaw(vehicle.getPose().orientation) / getYaw(orientation), 1, 10^-10);
 
-    delete simulator;
 }
 
 
@@ -120,8 +113,7 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity_diff_deltaT)
     // One hour simulation
     double t = 60*60*1;
 
-    DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
-    ModelSimulation vehicle(simulator, deltaT, 10, 0);
+    ModelSimulation vehicle(DYNAMIC_KINEMATIC, deltaT, 10, 0);
 
     UWVParameters parameters = loadRotationalParameters();
     vehicle.setUWVParameters(parameters);
@@ -152,7 +144,6 @@ BOOST_AUTO_TEST_CASE(constant_yaw_velocity_diff_deltaT)
     //Yaw angle comparison
     BOOST_CHECK_CLOSE( getYaw(vehicle.getPose().orientation) / getYaw(orientation), 1, 10^-10);
 
-    delete simulator;
 }
 
 BOOST_AUTO_TEST_CASE( angular )
@@ -165,8 +156,8 @@ BOOST_AUTO_TEST_CASE( angular )
     // Inertia parameters
     double Jt = 200;
     double J3 = 100;
-    DynamicKinematicSimulator *simulator = new DynamicKinematicSimulator();
-    ModelSimulation vehicle(simulator, deltaT, 10, 0);
+
+    ModelSimulation vehicle(DYNAMIC_KINEMATIC, deltaT, 10, 0);
 
     UWVParameters parameters = loadRotationalParameters();
     parameters.inertia_matrix << 0,   0,   0,   0,   0,    0,
@@ -228,7 +219,6 @@ BOOST_AUTO_TEST_CASE( angular )
     BOOST_CHECK_CLOSE( getYaw(vehicle.getPose().orientation) /  getYaw(final_orientation), 1, 10^-10);
     BOOST_CHECK_CLOSE(vehicle.getPose().angular_velocity[0] / omega[0], 1, 10^-10 );
 
-    delete simulator;
 }
 
 

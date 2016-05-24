@@ -40,6 +40,22 @@ enum ModelType
     COMPLEX
 };
 
+/** Define which Model Simulator will be used duruing simulation.
+ *
+ * Dynamic:
+ * Do the integration step from acceleratio to velocity in body-frame.
+ * It consider consider that vehicle's orientation will be provided.
+ *
+ * Dynamic_Kinematic:
+ * Do the integration step of all states, from acceleration to velocity and from velocity to pose.
+ *
+ */
+enum ModelSimulator
+{
+    DYNAMIC,
+    DYNAMIC_KINEMATIC
+};
+
 /**
  * Structure that contains all the necessary information for simulating the motion model
  */

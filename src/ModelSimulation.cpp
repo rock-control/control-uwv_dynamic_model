@@ -3,21 +3,25 @@
 
 namespace uwv_dynamic_model
 {
-ModelSimulation::ModelSimulation(DynamicSimulator* sim, double sampling_time, int sim_per_cycle,
+ModelSimulation::ModelSimulation(ModelSimulator sim, double sampling_time, int sim_per_cycle,
                                  double initial_time)
 {
     checkConstruction(sampling_time, sim_per_cycle, initial_time);
-    if(!sim)
-        throw std::runtime_error("No simulator used.");
+    if(sim == DYNAMIC)
+        simulator = new DynamicSimulator();
+    else if(sim == DYNAMIC_KINEMATIC)
+        simulator = new DynamicKinematicSimulator();
+    else
+        throw std::runtime_error("Unknown ModelSimulator.");
     current_time = initial_time;
     simulations_per_cycle = sim_per_cycle;
     pose = PoseVelocityState();
-    simulator = sim;
     setSamplingTime(sampling_time);
 }
 
 ModelSimulation::~ModelSimulation()
 {
+    delete simulator;
 }
 
 PoseVelocityState ModelSimulation::sendEffort(const base::Vector6d &control_input)

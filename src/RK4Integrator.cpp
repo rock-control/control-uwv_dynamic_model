@@ -62,18 +62,6 @@ PoseVelocityState RK4Integrator::deriv(const PoseVelocityState &current_states, 
     return derivatives;
 }
 
-PoseVelocityState RK4Integrator::velocityDeriv(const PoseVelocityState &current_states, const base::Vector6d &control_input)
-{
-    PoseVelocityState ret;
-    return 0*ret;
-}
-
-PoseVelocityState RK4Integrator::poseDeriv(const PoseVelocityState &current_states)
-{
-    PoseVelocityState ret;
-    return 0*ret;
-}
-
 void RK4Integrator::setIntegrationStep(const double step)
 {
     checkStep(step);

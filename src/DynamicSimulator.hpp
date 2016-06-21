@@ -44,7 +44,7 @@ public:
     /**
      * Access to dynamic_model
      */
-    DynamicModel* getDynamicModel();
+    DynamicModel& getDynamicModel();
 
 private:
 
@@ -63,4 +63,3 @@ private:
 };
 
 #endif
-

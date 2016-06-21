@@ -9,7 +9,7 @@ namespace uwv_dynamic_model
 class ModelSimulation
 {
 public:
-    ModelSimulation(DynamicSimulator* sim, double sampling_time = 0.01, int sim_per_cycle = 10,
+    ModelSimulation(ModelSimulator sim = DYNAMIC_KINEMATIC, double sampling_time = 0.01, int sim_per_cycle = 10,
                     double initial_time = 0.0);
 
     virtual ~ModelSimulation();

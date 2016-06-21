@@ -183,8 +183,7 @@ BOOST_AUTO_TEST_CASE( normal )
 
 BOOST_AUTO_TEST_CASE( unset_command )
 {
-    DynamicSimulator *simulator = new DynamicSimulator();
-    ModelSimulation vehicle(simulator);
+    ModelSimulation vehicle(DYNAMIC);
     UWVParameters parameters = loadParameters();
 
     BOOST_REQUIRE_NO_THROW(vehicle.setUWVParameters(parameters));
@@ -195,7 +194,6 @@ BOOST_AUTO_TEST_CASE( unset_command )
 
     BOOST_REQUIRE_THROW(vehicle.sendEffort(controlInput), std::runtime_error);
 
-    delete simulator;
 }
 
 
@@ -212,4 +210,3 @@ UWVParameters loadParameters(void)
 
 	return parameters;
 }
-

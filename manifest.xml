@@ -2,7 +2,10 @@
   <description brief="Dynamic model for a slow(2 m/s) moving underwater vehicle.">
   
   </description>
-  <author>Sankaranarayanan Natarajan/sankar.natarajan@dfki.de</author>
+  <maintainer>Joao Britto/cbn.joao@gmail.com</maintainer>
+  <maintainer>Rafael Saback/rafaelsaback@gmail.com</maintainer>
+  <author>Joao Britto/cbn.joao@gmail.com</author>
+  <author>Rafael Saback/rafaelsaback@gmail.com</author>
   <license></license>
   <url>http://</url>
   <logo>http://</logo>

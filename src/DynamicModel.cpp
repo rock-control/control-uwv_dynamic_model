@@ -55,7 +55,7 @@ base::Matrix6d DynamicModel::calcInvInertiaMatrix(const base::Matrix6d &inertia_
      * M * M^(-1) = I
      * A*x = b
      */
-    Eigen::JacobiSVD<base::Matrix6d> svd(inertia_matrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::JacobiSVD<base::MatrixXd> svd(inertia_matrix, Eigen::ComputeThinU | Eigen::ComputeThinV);
     return svd.solve(base::Matrix6d::Identity());
 }
 

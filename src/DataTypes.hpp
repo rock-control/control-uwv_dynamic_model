@@ -37,7 +37,8 @@ namespace uwv_dynamic_model
 enum ModelType
 {
     SIMPLE,
-    COMPLEX
+    COMPLEX,
+    INTERMEDIATE
 };
 
 /** Define which Model Simulator will be used duruing simulation.

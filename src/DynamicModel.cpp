@@ -32,6 +32,9 @@ base::Vector6d DynamicModel::calcAcceleration(const base::Vector6d &control_inpu
     case COMPLEX:
         acceleration  -= (calcCoriolisEffect(uwv_parameters.inertia_matrix, velocity) + caclGeneralQuadDamping(uwv_parameters.damping_matrices, velocity));
         break;
+    case INTERMEDIATE:
+        acceleration  -= (calcCoriolisEffect(uwv_parameters.inertia_matrix, velocity) + caclSimpleDamping(uwv_parameters.damping_matrices, velocity));
+        break;
     }
     return invert_inertia_matrix*acceleration;
 }

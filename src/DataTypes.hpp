@@ -33,18 +33,24 @@ namespace uwv_dynamic_model
  * Based on Fossen[1994] and McFarland & Whitcomb[2013]
  * Considering Coriolis. Damping = sum(quadDamping_linx + quadDamping_liny + quadDamping_linz + quadDamping_angx + quadDamping_angy + quadDamping_angz)
  * acceleration  = invInertiaMatrix * ( gEfforts - coriolisEffect - quadDamping - gravityBuoyancy)
+ *
+ * Intermediate Model:
+ * Based on Fossen[1994]
+ * Considering Coriolis. Damping = linearDamping + quadDamping
+ * acceleration  = invInertiaMatrix * ( gEfforts - coriolisEffect - Damping - gravityBuoyancy)
  */
 enum ModelType
 {
     SIMPLE,
-    COMPLEX
+    COMPLEX,
+    INTERMEDIATE
 };
 
 /** Define which Model Simulator will be used duruing simulation.
  *
  * Dynamic:
  * Do the integration step from acceleratio to velocity in body-frame.
- * It consider consider that vehicle's orientation will be provided.
+ * It consider that vehicle's orientation will be provided.
  *
  * Dynamic_Kinematic:
  * Do the integration step of all states, from acceleration to velocity and from velocity to pose.

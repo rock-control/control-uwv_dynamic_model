@@ -70,7 +70,7 @@ At the moment, three Model Types are defined:
 
  1. SIMPLE: 
 	 It ignores the Coriolis effect and consider the Damping vector with two terms,
-	the fist the linear damping and the second quadratic damping.
+	the first the linear damping and the second quadratic damping.
 	It is based on [Smallwood][].
 
 	> **Note:**
@@ -98,9 +98,9 @@ with,
 
 M<sub>vehicle</sub> = 
 
-|mass*Identity(3) | Zero(3)|
+|mass*Identity(3x3) | Zero(3x3)|
 |:---:|:---:|
-|**Zero(3)** | **Inertia**|
+|**Zero(3x3)** | **Inertia(3x3)**|
 
 ### Damping Matrices <a id="damping"></a>
 

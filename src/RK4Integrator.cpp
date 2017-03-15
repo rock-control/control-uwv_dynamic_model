@@ -21,6 +21,7 @@
  */
 
 #include "RK4Integrator.hpp"
+#include <stdexcept>
 
 namespace uwv_dynamic_model
 {

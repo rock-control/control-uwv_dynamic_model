@@ -1,4 +1,5 @@
 #include "KinematicModel.hpp"
+#include <stdexcept>
 
 namespace uwv_dynamic_model
 {

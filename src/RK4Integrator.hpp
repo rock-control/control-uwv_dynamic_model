@@ -11,7 +11,6 @@
 #define RK4_INTEGRATOR_HPP
 
 #include "DataTypes.hpp"
-#include <stdexcept>
 
 namespace uwv_dynamic_model
 {

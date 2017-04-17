@@ -221,6 +221,34 @@ BOOST_AUTO_TEST_CASE( angular )
 
 }
 
+BOOST_AUTO_TEST_CASE(dynamic_model_calc_efforts)
+{
+    uwv_dynamic_model::DynamicModel model;
+    UWVParameters parameters = loadParameters();
+    model.setUWVParameters(parameters);
+
+    // identity test
+    base::Vector6d velocity = base::Vector6d::Zero();
+    base::Orientation orientation = base::Orientation::Identity();
+    base::Vector6d control_input_in = base::Vector6d::Zero();
+
+    base::Vector6d acceleration = model.calcAcceleration(control_input_in, velocity, orientation);
+    base::Vector6d control_input_out = model.calcEfforts(acceleration, velocity, orientation);
+
+    BOOST_CHECK(control_input_in.isApprox(control_input_out));
+
+    // pseudo random values test
+    velocity.setRandom();
+    orientation.coeffs().setRandom();
+    orientation.normalize();
+    control_input_in.setRandom();
+
+    acceleration = model.calcAcceleration(control_input_in, velocity, orientation);
+    control_input_out = model.calcEfforts(acceleration, velocity, orientation);
+
+    BOOST_CHECK(control_input_in.isApprox(control_input_out));
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 

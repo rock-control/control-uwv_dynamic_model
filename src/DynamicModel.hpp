@@ -19,7 +19,16 @@ public:
      *  @param actual orientation
      *  @return linear/angular acceleration in body frame
      */
-    base::Vector6d calcAcceleration(const base::Vector6d &control_input, const base::Vector6d &velocity, const base::Orientation &orientation);
+    base::Vector6d calcAcceleration(const base::Vector6d &control_input, const base::Vector6d &velocity, const base::Orientation &orientation) const;
+
+    /** Compute efforts. Inverse of compute acceleration.
+     *
+     *  @param acceleration linear/angular acceleration in body frame
+     *  @param actual linear/angular velocity in body frame
+     *  @param actual orientation
+     *  @return (forces and torques) in body frame
+     */
+    base::Vector6d calcEfforts(const base::Vector6d &acceleration, const base::Vector6d &velocity, const base::Orientation &orientation) const;
 
     /**
      * Sets the general UWV parameters
@@ -53,13 +62,13 @@ private:
      */
     base::Vector6d calcCoriolisEffect( const base::Matrix6d &inertia_matrix, const base::Vector6d &velocity) const;
 
-    /** Compute damping effect
+    /** Computes damping and depending on the model type also coriolis effects
      *
      * @param uwv_paramters
      * @param velocity vector
      * @return vecotr of damping effect
      */
-    base::Vector6d caclDampingEffect( const UWVParameters &uwv_parameters, const base::Vector6d &velocity) const;
+    base::Vector6d calcDampingAndCoriolisEffect( const UWVParameters &uwv_parameters, const base::Vector6d &velocity) const;
 
     /** Compute quadratic damping for the SIMPLE mode
      *
@@ -124,7 +133,7 @@ private:
     /**
      * Determinant of inertiaMatrix must be different from zero
      */
-    void checkParameters(const UWVParameters &uwv_parameters);
+    void checkParameters(const UWVParameters &uwv_parameters) const;
 
     /**
      * Check control input.
@@ -134,7 +143,12 @@ private:
     /**
      * Check velocity
      */
-    void checkVelocity(const base::Vector6d &velocity);
+    void checkVelocity(const base::Vector6d &velocity) const;
+
+    /**
+     * Check acceleration values
+     */
+    void checkAcceleration(const base::Vector6d &acceleration) const;
 
     /**
      * MODEL PARAMETERS

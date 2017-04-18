@@ -15,7 +15,7 @@ DynamicModel::~DynamicModel()
 {
 }
 
-base::Vector6d DynamicModel::calcAcceleration(const base::Vector6d &control_input, const base::Vector6d &velocity, const base::Orientation &orientation)
+base::Vector6d DynamicModel::calcAcceleration(const base::Vector6d &control_input, const base::Vector6d &velocity, const base::Orientation &orientation) const
 {
     // Check inputs
     checkControlInput(control_input);
@@ -25,19 +25,22 @@ base::Vector6d DynamicModel::calcAcceleration(const base::Vector6d &control_inpu
     base::Vector6d acceleration = base::Vector6d::Zero();
 
     acceleration = control_input - calcGravityBuoyancy(orientation, uwv_parameters);
-    switch(uwv_parameters.model_type)
-    {
-    case SIMPLE:
-        acceleration  -=  caclSimpleDamping(uwv_parameters.damping_matrices, velocity);
-        break;
-    case COMPLEX:
-        acceleration  -= (calcCoriolisEffect(uwv_parameters.inertia_matrix, velocity) + caclGeneralQuadDamping(uwv_parameters.damping_matrices, velocity));
-        break;
-    case INTERMEDIATE:
-        acceleration  -= (calcCoriolisEffect(uwv_parameters.inertia_matrix, velocity) + caclSimpleDamping(uwv_parameters.damping_matrices, velocity));
-        break;
-    }
+    acceleration -= calcDampingAndCoriolisEffect(uwv_parameters, velocity);
     return invert_inertia_matrix*acceleration;
+}
+
+base::Vector6d DynamicModel::calcEfforts(const base::Vector6d& acceleration, const base::Vector6d& velocity, const base::Orientation& orientation) const
+{
+    // Check inputs
+    checkAcceleration(acceleration);
+    checkVelocity(velocity);
+
+    // Calculating the efforts given the current state based on all the hydrodynamics effects
+    base::Vector6d efforts = base::Vector6d::Zero();
+
+    efforts = uwv_parameters.inertia_matrix * acceleration + calcGravityBuoyancy(orientation, uwv_parameters);
+    efforts += calcDampingAndCoriolisEffect(uwv_parameters, velocity);
+    return efforts;
 }
 
 void DynamicModel::setUWVParameters(const UWVParameters &parameters)
@@ -85,6 +88,24 @@ base::Vector6d DynamicModel::calcCoriolisEffect(const base::Matrix6d &inertia_ma
     coriloisEffect << prod.head<3>().cross(velocity.tail<3>()),
                 prod.head<3>().cross(velocity.head<3>()) + prod.tail<3>().cross(velocity.tail<3>());
     return -coriloisEffect;
+}
+
+base::Vector6d DynamicModel::calcDampingAndCoriolisEffect(const UWVParameters& uwv_parameters, const base::Vector6d& velocity) const
+{
+    base::Vector6d damping_effects;
+    switch(uwv_parameters.model_type)
+    {
+    case SIMPLE:
+        damping_effects = caclSimpleDamping(uwv_parameters.damping_matrices, velocity);
+        break;
+    case COMPLEX:
+        damping_effects = (calcCoriolisEffect(uwv_parameters.inertia_matrix, velocity) + caclGeneralQuadDamping(uwv_parameters.damping_matrices, velocity));
+        break;
+    case INTERMEDIATE:
+        damping_effects = (calcCoriolisEffect(uwv_parameters.inertia_matrix, velocity) + caclSimpleDamping(uwv_parameters.damping_matrices, velocity));
+        break;
+    }
+    return damping_effects;
 }
 
 base::Vector6d DynamicModel::caclGeneralQuadDamping( const std::vector<base::Matrix6d> &quad_damp_matrices, const base::Vector6d &velocity) const
@@ -148,7 +169,7 @@ base::Vector6d DynamicModel::calcGravityBuoyancy( const base::Orientation& orien
     return gravityEffect;
 }
 
-void DynamicModel::checkParameters(const UWVParameters &uwv_parameters)
+void DynamicModel::checkParameters(const UWVParameters &uwv_parameters) const
 {
     if(uwv_parameters.model_type == SIMPLE && uwv_parameters.damping_matrices.size() != 2)
         throw std::invalid_argument("in SIMPLE model, damping_matrices should have two elements, the linear damping matrix and quadratic damping matrix");
@@ -168,10 +189,16 @@ void DynamicModel::checkControlInput(const base::Vector6d &control_input) const
         throw std::runtime_error("DynamicModel checkControlInput: control input is unset");
 }
 
-void DynamicModel::checkVelocity(const base::Vector6d &velocity)
+void DynamicModel::checkVelocity(const base::Vector6d &velocity) const
 {
     if(velocity.hasNaN())
         throw std::runtime_error("DynamicModel checkVelocity: velocity is unset");
+}
+
+void DynamicModel::checkAcceleration(const base::Vector6d& acceleration) const
+{
+    if(acceleration.hasNaN())
+        throw std::runtime_error("DynamicModel checkAcceleration: acceleration is unset");
 }
 
 };

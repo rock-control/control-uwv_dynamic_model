@@ -15,4 +15,11 @@
   <export>
     <cpp cflags="" lflags="" />
   </export>
+  <keywords>
+    <keyword>Control</keyword> <!--kw1 currently used as Category in Software Catalog -->
+    <keyword>Simulation</keyword>
+  </keywords>
+  <stage>2</stage>
+  <use>single project</use>
+  <activity>active</activity>
 </package>

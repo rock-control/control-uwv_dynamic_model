@@ -1,5 +1,5 @@
 #include "DynamicModel.hpp"
-#include <base/Logging.hpp>
+#include <base-logging/Logging.hpp>
 #include <stdexcept>
 
 namespace uwv_dynamic_model

@@ -10,6 +10,7 @@
   <url>http://</url>
   <logo>http://</logo>
   <depend package="base/types"/>
+  <depend package="base/logging"/>
   <tags>needs_opt</tags>
   <versioncontrol type="git" url="" />
   <export>
@@ -23,3 +24,4 @@
   <use>single project</use>
   <activity>active</activity>
 </package>
+

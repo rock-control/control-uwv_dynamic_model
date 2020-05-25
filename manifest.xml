@@ -1,27 +1,29 @@
 <package>
-  <description brief="Dynamic model for a slow(2 m/s) moving underwater vehicle.">
-  
-  </description>
-  <maintainer>Joao Britto/cbn.joao@gmail.com</maintainer>
-  <maintainer>Rafael Saback/rafaelsaback@gmail.com</maintainer>
-  <author>Joao Britto/cbn.joao@gmail.com</author>
-  <author>Rafael Saback/rafaelsaback@gmail.com</author>
-  <license></license>
-  <url>http://</url>
-  <logo>http://</logo>
-  <depend package="base/types"/>
-  <depend package="base/logging"/>
-  <tags>needs_opt</tags>
-  <versioncontrol type="git" url="" />
-  <export>
-    <cpp cflags="" lflags="" />
-  </export>
-  <keywords>
-    <keyword>Control</keyword> <!--kw1 currently used as Category in Software Catalog -->
-    <keyword>Simulation</keyword>
-  </keywords>
-  <stage>2</stage>
-  <use>single project</use>
-  <activity>active</activity>
+    <description brief="Dynamic model for underwater vehicles based on Fossen's equations of motion">
+        
+    </description>
+    <maintainer>Bilal Wehbe/bilal.wehbe@dfki.de</maintainer>
+    <author>Bilal Wehbe/bilal.wehbe@dfki.de</author>
+    <author>Sankaranarayanan Natarajan/sankar.natarajan@dfki.de</author>
+    <author>fzachert/fzachert@tzi.de</author>
+    <author>Rafael Saback/rafael.saback@fieb.org.br</author>
+    <!-- Use the short version name from:https://spdx.org/licenses/ -->
+    <license></license>
+    <url>https://git.hb.dfki.de/dfki-control/uwv_dynamic_model.git</url>
+    <logo>http://</logo>
+    <depend package="base/types" />
+    <depend package="base/logging"/>
+    <tags>needs_opt</tags>
+
+    <stage>0</stage>
+    <keywords>
+	       <keyword>Control</keyword>
+           <keyword>Localization</keyword>
+           <keyword>Simulation</keyword>
+    </keywords>
+    <!-- One of: active, pending, discontinued -->
+    <activity>active</activity>
+    <!-- One of: single project, multi project, external-->
+    <use>single project</use>
 </package>
 

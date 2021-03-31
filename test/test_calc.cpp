@@ -18,6 +18,36 @@
 using namespace uwv_dynamic_model;
 using namespace base;
 
+Vector3d getEuler(const Orientation& orientation)
+{
+    const Eigen::Matrix3d m = orientation.toRotationMatrix();
+    double x = Eigen::Vector2d(m.coeff(2,2) , m.coeff(2,1)).norm();
+    Vector3d res(0,::atan2(-m.coeff(2,0), x),0);
+    if (x > Eigen::NumTraits<double>::dummy_precision()){
+        res[0] = ::atan2(m.coeff(1,0), m.coeff(0,0));
+        res[2] = ::atan2(m.coeff(2,1), m.coeff(2,2));
+    }else{
+        res[0] = 0;
+        res[2] = (m.coeff(2,0)>0?1:-1)* ::atan2(-m.coeff(0,1), m.coeff(1,1));
+    }
+    return res;
+}
+
+double getYaw(const Orientation& orientation)
+{
+    return getEuler(orientation)[0];
+}
+
+double getPitch(const Orientation& orientation)
+{
+    return getEuler(orientation)[1];
+}
+
+double getRoll(const Orientation& orientation)
+{
+    return getEuler(orientation)[2];
+}
+
 UWVParameters loadParameters(void);
 UWVParameters loadRotationalParameters(void);
 Vector3d calcOmega(base::Vector3d omega0, double t, double omegan);
@@ -319,7 +349,7 @@ base::Orientation calcOrientation(base::Orientation init_ori, double t, double w
     double alpha = wn*t/2;
     double betha = wi*t/2;
 
-    base::Vector4d y;
+    Eigen::Vector4d y;
     y[0] = h0[0]*cos(alpha)*sin(betha) + h0[1]*sin(alpha)*sin(betha);
     y[1] = h0[1]*cos(alpha)*sin(betha) - h0[0]*sin(alpha)*sin(betha);
     y[2] = h0[2]*cos(alpha)*sin(betha) + sin(alpha)*cos(betha);

@@ -13,10 +13,25 @@
 #ifndef _UWV_DATATYPES_H_
 #define _UWV_DATATYPES_H_
 
-#include "base/Eigen.hpp"
-#include "base/Pose.hpp"
 #include <vector>
 #include <utility>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
+namespace base
+{
+    // this definition is neccesary in order to support ROCK's typelib based type export
+    typedef Eigen::Matrix<double, 3, 1, Eigen::DontAlign>     Vector3d;
+    typedef Eigen::Matrix<double, 6, 1, Eigen::DontAlign>     Vector6d;
+    typedef Eigen::Matrix<double, Eigen::Dynamic, 1, Eigen::DontAlign> 
+                                                              VectorXd;
+    typedef Eigen::Matrix<double, 6, 6, Eigen::DontAlign>     Matrix6d;
+    typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::DontAlign> 
+                                                              MatrixXd;
+    typedef Eigen::Quaternion<double, Eigen::DontAlign>   Quaterniond;
+    typedef Quaterniond Orientation;
+}
+
 
 namespace uwv_dynamic_model
 {
